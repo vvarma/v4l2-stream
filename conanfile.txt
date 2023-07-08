@@ -1,0 +1,6 @@
+[requires]
+pistache/cci.20201127
+
+[generators]
+CMakeDeps
+CMakeToolchain
