@@ -1,1 +1,3 @@
-find_package(pistache REQUIRED)
+find_package(Pistache REQUIRED)
+find_package(fmt REQUIRED)
+find_package(spdlog REQUIRED)

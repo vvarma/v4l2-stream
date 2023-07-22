@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.23)
+project(v4l)
+
+add_library(${PROJECT_NAME} src/v4l_caps.cpp src/v4l_capture.cpp src/v4l_device.cpp src/v4l_exception.cpp src/v4l_stream.cpp)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
