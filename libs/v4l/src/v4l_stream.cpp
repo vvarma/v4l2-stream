@@ -1,8 +1,4 @@
 #include "v4l/v4l_stream.h"
-#include "v4l/v4l_caps.h"
-#include "v4l/v4l_device.h"
-#include "v4l/v4l_exception.h"
-#include "v4l/v4l_frame.h"
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -17,18 +13,14 @@
 
 #include <linux/videodev2.h>
 
+#include "v4l/v4l_caps.h"
+#include "v4l/v4l_device.h"
+#include "v4l/v4l_exception.h"
+#include "v4l/v4l_frame.h"
+
+#include "util.h"
+
 namespace v4s {
-
-uint16_t requestBuffers(int fd, BufType bufType, uint32_t num_bufs);
-
-uint32_t getNumPlanes(int fd, BufType bufType);
-
-std::vector<std::vector<v4l2_plane>>
-allocatePlanes(Device::Ptr device, BufType buf_type, int num_bufs);
-
-BufType getBufType(std::shared_ptr<Device> device);
-
-void *allocateBuffer(int fd, int offset, size_t length);
 
 namespace internal {
 
@@ -47,7 +39,7 @@ mapBuffers(Device::Ptr device,
 class MMapBuffers {
 public:
   MMapBuffers(std::shared_ptr<Device> device, int num_bufs)
-      : buf_type_(getBufType(device)),
+      : buf_type_(device->GetBufType()),
         planes_(allocatePlanes(device, buf_type_, num_bufs)),
         buffers_(mapBuffers(device, planes_)), device_(device) {}
 
@@ -94,8 +86,7 @@ public:
   ~MMapFrame() override { stream_->QueueBuffer(buffer_idx_); }
   void Process(uint32_t plane,
                std::function<void(uint8_t *, uint64_t)> fn) const override {
-    fn(static_cast<uint8_t *>(buffers_[plane]->start),
-       bytes_used_[plane]);
+    fn(static_cast<uint8_t *>(buffers_[plane]->start), bytes_used_[plane]);
   }
 
   uint64_t SeqId() const override { return seq_id_; }
@@ -110,10 +101,18 @@ void MMapStream::DoStart() {
   for (int i = 0; i < buffers->NumBuffers(); ++i) {
     QueueBuffer(i);
   }
-  int bufType = getBufType(device_);
+  int bufType = device_->GetBufType();
   int ret = ioctl(device_->fd(), VIDIOC_STREAMON, &bufType);
   if (ret < 0)
     throw Exception(fmt::format("Failed to start stream: {}", strerror(errno)));
+}
+void MMapStream::DoStop() {
+  int bufType = device_->GetBufType();
+  int ret = ioctl(device_->fd(), VIDIOC_STREAMOFF, &bufType);
+  if (ret < 0)
+    throw Exception(fmt::format("Failed to stop stream: {}", strerror(errno)));
+  // todo lock
+  buffers.reset();
 }
 
 MMapStream::MMapStream(Device::Ptr device) : Stream<MMapStream>(device) {}
@@ -128,7 +127,7 @@ void MMapStream::QueueBuffer(int idx) {
 Frame::Ptr MMapStream::FetchNext() {
   v4l2_buffer buffer;
   memset(&buffer, 0, sizeof(v4l2_buffer));
-  buffer.type = getBufType(device_);
+  buffer.type = device_->GetBufType();
   buffer.memory = V4L2_MEMORY_MMAP;
   int ret = ioctl(device_->fd(), VIDIOC_DQBUF, &buffer);
   if (ret < 0) {
@@ -155,58 +154,6 @@ Frame::Ptr MMapStream::FetchNext() {
 }
 MMapStream::~MMapStream() {}
 
-uint16_t requestBuffers(int fd, BufType bufType, uint32_t num_bufs) {
-  v4l2_requestbuffers requestbuffers;
-  memset(&requestbuffers, 0, sizeof(v4l2_requestbuffers));
-  requestbuffers.type = bufType;
-  requestbuffers.count = 4;
-  requestbuffers.memory = V4L2_MEMORY_MMAP;
-  int ret = ioctl(fd, VIDIOC_REQBUFS, &requestbuffers);
-  if (ret < 0)
-    throw Exception(
-        fmt::format("Failed to request buffers: {}", strerror(errno)));
-  return requestbuffers.count;
-}
-
-uint32_t getNumPlanes(int fd, BufType bufType) {
-  if (bufType == BUF_VIDEO_CAPTURE)
-    return 1;
-  v4l2_format fmt;
-  memset(&fmt, 0, sizeof(v4l2_format));
-  fmt.type = bufType;
-  int ret = ioctl(fd, VIDIOC_G_FMT, &fmt);
-  if (ret < 0)
-    throw Exception(fmt::format("Failed to get format: {}", strerror(errno)));
-  return fmt.fmt.pix_mp.num_planes;
-}
-
-std::vector<std::vector<v4l2_plane>>
-allocatePlanes(Device::Ptr device, BufType buf_type, int num_bufs) {
-  int num_buffers = requestBuffers(device->fd(), buf_type, 4);
-  uint32_t num_planes = getNumPlanes(device->fd(), buf_type);
-  std::vector<std::vector<v4l2_plane>> planes;
-  for (int i = 0; i < num_buffers; ++i) {
-    std::vector<v4l2_plane> buf_planes;
-    for (int j = 0; j < num_planes; ++j) {
-      v4l2_plane plane;
-      memset(&plane, 0, sizeof(v4l2_plane));
-      buf_planes.push_back(plane);
-    }
-    planes.push_back(buf_planes);
-  }
-  return planes;
-}
-
-BufType getBufType(std::shared_ptr<Device> device) {
-  if (device->GetCapabilities().IsMPlane())
-    return BUF_VIDEO_CAPTURE_MPLANE;
-  return BUF_VIDEO_CAPTURE;
-}
-
-void *allocateBuffer(int fd, int offset, size_t length) {
-  return mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
-}
-
 v4s::internal::Buffer::Buffer(int fd, int offset, size_t length)
     : start(allocateBuffer(fd, offset, length)), length(length) {}
 
@@ -216,7 +163,7 @@ std::vector<std::vector<internal::Buffer::Ptr>>
 internal::mapBuffers(Device::Ptr device,
                      const std::vector<std::vector<v4l2_plane>> &planes) {
   bool mplane = device->GetCapabilities().IsMPlane();
-  BufType bufType = getBufType(device);
+  BufType bufType = device->GetBufType();
   std::vector<std::vector<internal::Buffer::Ptr>> buffers;
   for (int bufIdx = 0; bufIdx < planes.size(); ++bufIdx) {
     std::vector<internal::Buffer::Ptr> plane_buffers;

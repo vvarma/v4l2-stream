@@ -24,6 +24,9 @@ constexpr std::bitset<32> kVideoCaptureDevice =
      CAP_VIDEO_M2M);
 constexpr std::bitset<32> kMultiPlaneDevice =
     (CAP_VIDEO_CAPTURE_MPLANE | CAP_VIDEO_M2M_MPLANE | CAP_VIDEO_OUTPUT_MPLANE);
+constexpr std::bitset<32> kVideoOutputDevice =
+    (CAP_VIDEO_OUTPUT | CAP_VIDEO_OUTPUT_MPLANE | CAP_VIDEO_M2M |
+     CAP_VIDEO_M2M_MPLANE);
 
 struct Capabilities {
   std::string driver, card, bus_info;
@@ -31,6 +34,8 @@ struct Capabilities {
   std::bitset<32> caps;
 
   bool IsMPlane() const;
+  bool IsCapture() const;
+  bool IsOutput() const;
 };
 
 } // namespace v4s

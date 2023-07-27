@@ -12,13 +12,6 @@
 #include "v4l/v4l_frame.h"
 namespace v4s {
 
-enum BufType {
-  BUF_VIDEO_CAPTURE = 1,
-  BUF_VIDEO_OUTPUT = 2,
-  BUF_VIDEO_CAPTURE_MPLANE = 9,
-  BUF_VIDEO_OUTPUT_MPLANE = 10
-};
-
 template <typename T> class Stream : public std::enable_shared_from_this<T> {
 
   std::atomic_bool started_;

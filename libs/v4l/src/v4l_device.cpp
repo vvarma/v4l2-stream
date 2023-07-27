@@ -51,6 +51,26 @@ Device::Ptr Device::from_devnode(const std::string &path) {
 
 Device::~Device() { close(fd_); }
 
+BufType Device::GetBufType(bool capture) const {
+  if (capture) {
+    if (!capabilities_.IsCapture()) {
+      throw Exception("Device does not support capture");
+    }
+    if (capabilities_.IsMPlane()) {
+      return BUF_VIDEO_CAPTURE_MPLANE;
+    }
+    return BUF_VIDEO_CAPTURE;
+  } else {
+    if (!capabilities_.IsOutput()) {
+      throw Exception("Device does not support ouput");
+    }
+    if (capabilities_.IsMPlane()) {
+      return BUF_VIDEO_OUTPUT_MPLANE;
+    }
+    return BUF_VIDEO_OUTPUT;
+  }
+}
+
 int Device::fd() const { return fd_; }
 
 Capabilities Device::GetCapabilities() const { return capabilities_; }

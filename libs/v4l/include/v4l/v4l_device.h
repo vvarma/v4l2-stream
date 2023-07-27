@@ -10,6 +10,12 @@
 #include "v4l_caps.h"
 
 namespace v4s {
+enum BufType {
+  BUF_VIDEO_CAPTURE = 1,
+  BUF_VIDEO_OUTPUT = 2,
+  BUF_VIDEO_CAPTURE_MPLANE = 9,
+  BUF_VIDEO_OUTPUT_MPLANE = 10
+};
 class CaptureDevice;
 class OutputDevice;
 
@@ -22,6 +28,8 @@ public:
 
   Device(int fd, Capabilities Capabilities);
   ~Device();
+
+  BufType GetBufType(bool capture = true) const;
 
   int fd() const;
 
