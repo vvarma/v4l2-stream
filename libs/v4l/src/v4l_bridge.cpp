@@ -182,6 +182,7 @@ void Bridge::QueueBuffer(int idx) {
     throw Exception("Failed to queue buffer");
   }
 }
+Bridge::~Bridge() {}
 
 internal::BridgeBuffers::BridgeBuffers(Device::Ptr capture_device, int num_bufs)
     : device_(capture_device), buf_type_(device_->GetBufType()),

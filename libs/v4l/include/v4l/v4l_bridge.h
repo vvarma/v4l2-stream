@@ -8,6 +8,7 @@ namespace internal {
 struct BridgeBuffers;
 }
 class Bridge {
+public:
   typedef std::shared_ptr<Bridge> Ptr;
   Bridge(Device::Ptr capture_device, Device::Ptr output_device);
   bool Poll();

@@ -2,6 +2,7 @@
 pistache/cci.20201127
 fmt/9.1.0
 spdlog/1.11.0
+libev/4.33
 
 [generators]
 CMakeDeps
