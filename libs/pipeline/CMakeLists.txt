@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.23)
 project(pipeline)
 
 add_library(${PROJECT_NAME} src/pipeline.cpp)

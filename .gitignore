@@ -1,3 +1,5 @@
+bin/
+compile_commands.json
 local_build
 .cache
 .python-version
