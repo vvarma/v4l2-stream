@@ -1,5 +1,6 @@
 #include "encoder/mjpeg_encoder.h"
 #include "http-server/http-server.h"
+#include "pipeline/loader.h"
 #include "pipeline/pipeline.h"
 #include "v4l/v4l_bridge.h"
 #include "v4l/v4l_capture.h"
@@ -12,19 +13,19 @@
 
 struct StreamRoute : public v4s::Route {
   v4s::MJpegEncoder encoder_;
-  v4s::Pipeline<v4s::MJpegEncoder> pipeline_;
-  StreamRoute(std::vector<v4s::Bridge::Ptr> bridges,
-              v4s::MMapStream::Ptr stream)
-      : pipeline_(bridges, stream, encoder_) {}
+  v4s::PipelineLoader loader_;
+  StreamRoute(v4s::PipelineLoader loader) : loader_(loader) {}
   std::string Path() { return "/stream"; }
   void Handle(v4s::Request req, v4s::ResponseWriter rw) {
+    auto pipeline = loader_.Load(encoder_);
+
     try {
-      std::thread pipelineThread([&] { pipeline_.Start(); });
+      std::thread pipelineThread([&] { pipeline.Start(); });
       v4s::MJpegEncoder encoder;
       rw.SetContentType(encoder.ContentType());
       spdlog::debug("starting loop");
       while (true) {
-        auto frame = pipeline_.Next();
+        auto frame = pipeline.Next();
         spdlog::debug("got a frame");
         rw.Write(frame);
       }
@@ -34,7 +35,6 @@ struct StreamRoute : public v4s::Route {
   }
 };
 
-v4s::Route::Ptr StreamRoutes(std::vector<v4s::Bridge::Ptr> bridges,
-                             v4s::MMapStream::Ptr stream) {
-  return std::make_shared<StreamRoute>(bridges, stream);
+v4s::Route::Ptr StreamRoutes(v4s::PipelineLoader loader) {
+  return std::make_shared<StreamRoute>(loader);
 }

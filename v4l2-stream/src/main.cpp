@@ -5,8 +5,11 @@
 #include <vector>
 
 #include <spdlog/spdlog.h>
+#include <structopt/app.hpp>
 
 #include "http-server/http-server.h"
+#include "pipeline/config.h"
+#include "pipeline/loader.h"
 #include "v4l/v4l_bridge.h"
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_device.h"
@@ -20,32 +23,35 @@ void sigIntHandler(int signal) {
   program_running = false;
 }
 
-int main(int argc, char *argv[]) {
-  // Install a signal handler
-  std::signal(SIGINT, &sigIntHandler);
-  std::signal(SIGTERM, &sigIntHandler);
+struct Options {
+  std::string pipeline_config;
+};
+STRUCTOPT(Options, pipeline_config);
 
-  spdlog::set_level(spdlog::level::debug);
-  auto device = v4s::Device::from_devnode("/dev/video0");
-  auto isp_device = v4s::Device::from_devnode("/dev/video12");
-  auto codec_device = v4s::Device::from_devnode("/dev/video11");
-  std::vector<v4s::Bridge::Ptr> bridges{
-      std::make_shared<v4s::Bridge>(device, isp_device),
-      std::make_shared<v4s::Bridge>(isp_device, codec_device),
-  };
-  auto out_stream = codec_device->TryCapture();
-  if (!out_stream)
-    throw std::runtime_error("could not capture from output device");
-  auto stream = std::make_shared<v4s::MMapStream>(out_stream);
-  v4s::Server server;
-  server.RegisterRoute(StreamRoutes(bridges, stream));
-  // al tis was to handle the f'in address already in use
-  // apparently that shit is not working still
-  std::thread server_t([&server] { server.Start(); });
-  while (program_running) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+int main(int argc, char *argv[]) {
+  try {
+    auto options = structopt::app("v4l2-stream").parse<Options>(argc, argv);
+    // Install a signal handler
+    std::signal(SIGINT, &sigIntHandler);
+    std::signal(SIGTERM, &sigIntHandler);
+
+    spdlog::set_level(spdlog::level::debug);
+    v4s::PipelineLoader loader(
+        v4s::PipelineConfig::FromFile(options.pipeline_config));
+    v4s::Server server;
+    server.RegisterRoute(StreamRoutes(loader));
+    // al tis was to handle the f'in address already in use
+    // apparently that shit is not working still
+    std::thread server_t([&server] { server.Start(); });
+    while (program_running) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    server.Stop();
+    server_t.join();
+    return 0;
+  } catch (structopt::exception &e) {
+    spdlog::error("Exception parsing cli parameters {}", e.what());
+    spdlog::info("{}", e.help());
   }
-  server.Stop();
-  server_t.join();
-  return 0;
+  return 1;
 }
