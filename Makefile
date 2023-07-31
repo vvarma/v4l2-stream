@@ -27,6 +27,10 @@ dev: build
 	$(BUILD_DIR)/v4l2-stream/v4l2-stream
 
 
+.PHONY: dev-docker-arm64
+dev-docker-arm64:
+	docker buildx build -o ./bin/armv8 --build-arg CC=aarch64-linux-gnu-gcc --build-arg CXX=aarch64-linux-gnu-g++ --build-arg HOST_PROFILE=armv8_debug --build-arg BUILD_TYPE=Debug . 
+
 .PHONY: docker-arm64
 docker-arm64:
 	docker buildx build -o ./bin/armv8 --build-arg CC=aarch64-linux-gnu-gcc --build-arg CXX=aarch64-linux-gnu-g++ --build-arg HOST_PROFILE=armv8 . 

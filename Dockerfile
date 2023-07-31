@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3-wheel \
   python3-pip \
   python3-venv \
-  cmake\
+  cmake \
+  ccache \
   ninja-build \
   && rm -rf /var/lib/apt/lists/*
 ENV VIRTUAL_ENV=/venv
@@ -33,6 +34,11 @@ CXX=$target_host-g++
 STRIP=$target_host-strip
 RC=$target_host-windres
 CONAN_CMAKE_SYSTEM_PROCESSOR=armv8
+EOF
+RUN <<EOF cat >> ~/.conan/profiles/armv8_debug
+include(armv8)
+[settings]
+build_type=Debug
 EOF
 
 FROM base AS build
