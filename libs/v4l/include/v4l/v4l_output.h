@@ -10,7 +10,7 @@ public:
   OutputDevice(std::shared_ptr<Device> device);
   Format GetFormat() const;
   Format SetFormat(Format format);
-  Device::Ptr Device() const;
+  Device::Ptr GetDevice() const;
   BufType GetBufType() const;
 
 private:

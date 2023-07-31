@@ -14,7 +14,7 @@ public:
 
   BufType GetBufType() const;
 
-  Device::Ptr Device() const;
+  Device::Ptr GetDevice() const;
 
 private:
   Device::Ptr device_;

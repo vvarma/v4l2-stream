@@ -14,15 +14,15 @@
 
 namespace v4s {
 
-void requestOutputDMABuffers(Device::Ptr device, int num_bufs);
-void queueBuffer(Device::Ptr device, int idx);
+void requestOutputDMABuffers(Device::Ptr device, BufType buf_type,
+                             int num_bufs);
 namespace internal {
 
-std::vector<std::vector<int>> mapBuffers(Device::Ptr device, int num_bufs,
-                                         int num_planes);
+std::vector<std::vector<int>> mapBuffers(Device::Ptr device, BufType buf_type,
+                                         int num_bufs, int num_planes);
 class BridgeBuffers {
 public:
-  BridgeBuffers(Device::Ptr capture_device, int num_bufs);
+  BridgeBuffers(Device::Ptr capture_device, BufType buf_type, int num_bufs);
   int NumBufs() const { return dma_fds_.size(); }
   int NumPlanes() const { return num_planes_; }
 
@@ -37,18 +37,20 @@ Bridge::Bridge(CaptureDevice capture_device, OutputDevice output_device)
     : capture_device_(capture_device), output_device_(output_device) {}
 
 void Bridge::Start() {
-  auto output_device = output_device_.Device();
-  auto capture_device = capture_device_.Device();
+  auto output_device = output_device_.GetDevice();
+  auto capture_device = capture_device_.GetDevice();
   if (getNumPlanes(capture_device->fd(), capture_device_.GetBufType()) !=
       getNumPlanes(output_device->fd(), output_device_.GetBufType())) {
     throw Exception(
         "Capture and output device must have the same number of planes");
   }
 
-  buffers_ = std::make_unique<internal::BridgeBuffers>(capture_device, 4);
-  requestOutputDMABuffers(output_device, buffers_->NumBufs());
+  buffers_ = std::make_unique<internal::BridgeBuffers>(
+      capture_device, capture_device_.GetBufType(), 4);
+  requestOutputDMABuffers(output_device, output_device_.GetBufType(),
+                          buffers_->NumBufs());
   for (int i = 0; i < buffers_->NumBufs(); ++i) {
-    queueBuffer(capture_device, i);
+    QueueBuffer(i);
   }
   int capture_buf_type = capture_device_.GetBufType();
   int output_buf_type = output_device_.GetBufType();
@@ -65,8 +67,8 @@ void Bridge::Start() {
                 output_device->GetCapabilities().driver);
 }
 void Bridge::Stop() {
-  auto output_device = output_device_.Device();
-  auto capture_device = capture_device_.Device();
+  auto output_device = output_device_.GetDevice();
+  auto capture_device = capture_device_.GetDevice();
   int capture_buf_type = capture_device_.GetBufType();
   int output_buf_type = output_device_.GetBufType();
   int ret = ioctl(capture_device->fd(), VIDIOC_STREAMOFF, &capture_buf_type);
@@ -80,8 +82,8 @@ void Bridge::Stop() {
   buffers_ = nullptr;
 }
 void Bridge::ProcessRead() {
-  auto output_device = output_device_.Device();
-  auto capture_device = capture_device_.Device();
+  auto output_device = output_device_.GetDevice();
+  auto capture_device = capture_device_.GetDevice();
   spdlog::debug("Process Read for {}->{}",
                 capture_device->GetCapabilities().driver,
                 output_device->GetCapabilities().driver);
@@ -136,8 +138,8 @@ void Bridge::ProcessRead() {
 }
 
 void Bridge::ProcessWrite() {
-  auto output_device = output_device_.Device();
-  auto capture_device = capture_device_.Device();
+  auto output_device = output_device_.GetDevice();
+  auto capture_device = capture_device_.GetDevice();
   spdlog::debug("Process Write for {}->{}",
                 capture_device->GetCapabilities().driver,
                 output_device->GetCapabilities().driver);
@@ -162,32 +164,16 @@ void Bridge::ProcessWrite() {
     }
     bufIdx = buffer.index;
   }
-  v4l2_buffer buffer;
-  memset(&buffer, 0, sizeof(v4l2_buffer));
-  buffer.type = capture_device->GetBufType();
-  buffer.memory = V4L2_MEMORY_MMAP;
-  std::vector<v4l2_plane> planes(buffers_->NumPlanes());
-  for (auto &plane : planes) {
-    memset(&plane, 0, sizeof(plane));
-  }
-  if (capture_device->GetCapabilities().IsMPlane()) {
-    buffer.m.planes = planes.data();
-    buffer.length = buffers_->NumPlanes();
-  }
-  buffer.index = bufIdx;
-  int ret = ioctl(capture_device->fd(), VIDIOC_QBUF, &buffer);
-  if (ret < 0) {
-    throw Exception("Failed to enqueue buffer");
-  }
+  QueueBuffer(bufIdx);
 }
 
-int Bridge::ReadFd() const { return capture_device_.Device()->fd(); }
-int Bridge::WriteFd() const { return output_device_.Device()->fd(); }
+int Bridge::ReadFd() const { return capture_device_.GetDevice()->fd(); }
+int Bridge::WriteFd() const { return output_device_.GetDevice()->fd(); }
 CaptureDevice Bridge::GetCaptureDevice() const { return capture_device_; }
 OutputDevice Bridge::GetOutputDevice() const { return output_device_; }
 
 void Bridge::QueueBuffer(int idx) {
-  auto capture_device = capture_device_.Device();
+  auto capture_device = capture_device_.GetDevice();
   v4l2_buffer buf;
   memset(&buf, 0, sizeof(v4l2_buffer));
   BufType buf_type = capture_device_.GetBufType();
@@ -209,23 +195,25 @@ void Bridge::QueueBuffer(int idx) {
 }
 Bridge::~Bridge() {}
 
-internal::BridgeBuffers::BridgeBuffers(Device::Ptr capture_device, int num_bufs)
-    : device_(capture_device), buf_type_(device_->GetBufType()),
+internal::BridgeBuffers::BridgeBuffers(Device::Ptr capture_device,
+                                       BufType buf_type, int num_bufs)
+    : device_(capture_device), buf_type_(buf_type),
       num_bufs_(requestBuffers(device_->fd(), buf_type_, num_bufs)),
       num_planes_(getNumPlanes(device_->fd(), buf_type_)),
-      dma_fds_(mapBuffers(device_, num_bufs_, num_planes_)) {}
+      dma_fds_(mapBuffers(device_, buf_type_, num_bufs_, num_planes_)) {}
 
-std::vector<std::vector<int>>
-internal::mapBuffers(Device::Ptr device, int num_bufs, int num_planes) {
+std::vector<std::vector<int>> internal::mapBuffers(Device::Ptr device,
+                                                   BufType buf_type,
+                                                   int num_bufs,
+                                                   int num_planes) {
   bool mplane = device->GetCapabilities().IsMPlane();
-  BufType bufType = device->GetBufType();
   std::vector<std::vector<int>> buffers;
   for (int bufIdx = 0; bufIdx < num_bufs; ++bufIdx) {
     std::vector<int> plane_buffers;
     if (!mplane) {
       v4l2_exportbuffer expbuf;
       memset(&expbuf, 0, sizeof(v4l2_exportbuffer));
-      expbuf.type = bufType;
+      expbuf.type = buf_type;
       expbuf.index = bufIdx;
       int ret = ioctl(device->fd(), VIDIOC_EXPBUF, &expbuf);
       if (ret < 0) {
@@ -236,7 +224,7 @@ internal::mapBuffers(Device::Ptr device, int num_bufs, int num_planes) {
       for (int planeIdx = 0; planeIdx < num_planes; ++planeIdx) {
         v4l2_exportbuffer expbuf;
         memset(&expbuf, 0, sizeof(v4l2_exportbuffer));
-        expbuf.type = bufType;
+        expbuf.type = buf_type;
         expbuf.index = bufIdx;
         expbuf.plane = planeIdx;
         int ret = ioctl(device->fd(), VIDIOC_EXPBUF, &expbuf);
@@ -250,11 +238,11 @@ internal::mapBuffers(Device::Ptr device, int num_bufs, int num_planes) {
   }
   return buffers;
 }
-void requestOutputDMABuffers(Device::Ptr device, int num_bufs) {
+void requestOutputDMABuffers(Device::Ptr device, BufType buf_type,
+                             int num_bufs) {
   v4l2_requestbuffers reqbuf;
   memset(&reqbuf, 0, sizeof(v4l2_requestbuffers));
-  BufType out_buf_type = device->GetBufType(false);
-  reqbuf.type = out_buf_type;
+  reqbuf.type = buf_type;
   reqbuf.memory = V4L2_MEMORY_DMABUF;
   reqbuf.count = num_bufs;
   int ret = ioctl(device->fd(), VIDIOC_REQBUFS, &reqbuf);
@@ -265,5 +253,4 @@ void requestOutputDMABuffers(Device::Ptr device, int num_bufs) {
     throw Exception("Failed to allocate requested number of buffers");
   }
 }
-void queueBuffer(Device::Ptr device, int idx) {}
 } // namespace v4s

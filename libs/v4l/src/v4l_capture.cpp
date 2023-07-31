@@ -16,7 +16,7 @@ Format CaptureDevice::SetFormat(Format format) {
   return setFormat(device_, GetBufType(), format);
 }
 
-Device::Ptr CaptureDevice::Device() const { return device_; }
+Device::Ptr CaptureDevice::GetDevice() const { return device_; }
 
 BufType CaptureDevice::GetBufType() const {
   auto capabilities = device_->GetCapabilities();

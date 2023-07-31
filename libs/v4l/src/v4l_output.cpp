@@ -12,7 +12,7 @@ Format OutputDevice::GetFormat() const {
 Format OutputDevice::SetFormat(Format format) {
   return setFormat(device_, GetBufType(), format);
 }
-Device::Ptr OutputDevice::Device() const { return device_; }
+Device::Ptr OutputDevice::GetDevice() const { return device_; }
 
 BufType OutputDevice::GetBufType() const {
   auto capabilities = device_->GetCapabilities();
