@@ -8,7 +8,7 @@
 #include <optional>
 #include <vector>
 
-#include "v4l/v4l_device.h"
+#include "v4l/v4l_capture.h"
 #include "v4l/v4l_frame.h"
 namespace v4s {
 
@@ -17,10 +17,10 @@ template <typename T> class Stream : public std::enable_shared_from_this<T> {
   std::atomic_bool started_;
 
 protected:
-  Device::Ptr device_;
+  CaptureDevice device_;
 
 public:
-  Stream(Device::Ptr device) : device_(device), started_(false) {}
+  Stream(CaptureDevice device) : device_(device), started_(false) {}
   void Start() {
     (static_cast<T *>(this))->DoStart();
     started_ = true;
@@ -30,6 +30,7 @@ public:
       (static_cast<T *>(this))->DoStop();
     started_ = false;
   }
+  CaptureDevice GetDevice() const { return device_; }
 
   Frame::Ptr Next() {
     if (!started_)
@@ -48,7 +49,7 @@ class MMapStream : public Stream<MMapStream> {
 public:
   typedef std::shared_ptr<MMapStream> Ptr;
   void QueueBuffer(int idx);
-  MMapStream(Device::Ptr device);
+  MMapStream(CaptureDevice device);
   bool Poll();
   void DoStart();
   void DoStop();

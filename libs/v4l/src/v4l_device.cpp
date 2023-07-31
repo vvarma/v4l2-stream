@@ -17,6 +17,7 @@
 #include "v4l/v4l_caps.h"
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_exception.h"
+#include "v4l/v4l_output.h"
 
 namespace v4s {
 Capabilities getCapabilities(int fd) {
@@ -51,26 +52,6 @@ Device::Ptr Device::from_devnode(const std::string &path) {
 
 Device::~Device() { close(fd_); }
 
-BufType Device::GetBufType(bool capture) const {
-  if (capture) {
-    if (!capabilities_.IsCapture()) {
-      throw Exception("Device does not support capture");
-    }
-    if (capabilities_.IsMPlane()) {
-      return BUF_VIDEO_CAPTURE_MPLANE;
-    }
-    return BUF_VIDEO_CAPTURE;
-  } else {
-    if (!capabilities_.IsOutput()) {
-      throw Exception("Device does not support ouput");
-    }
-    if (capabilities_.IsMPlane()) {
-      return BUF_VIDEO_OUTPUT_MPLANE;
-    }
-    return BUF_VIDEO_OUTPUT;
-  }
-}
-
 int Device::fd() const { return fd_; }
 
 Capabilities Device::GetCapabilities() const { return capabilities_; }
@@ -81,6 +62,14 @@ std::optional<CaptureDevice> Device::TryCapture() {
     return std::nullopt;
   }
   return CaptureDevice(shared_from_this());
+}
+
+std::optional<OutputDevice> Device::TryOutput() {
+  Capabilities caps = GetCapabilities();
+  if (!(caps.caps & kVideoOutputDevice).any()) {
+    return std::nullopt;
+  }
+  return OutputDevice(shared_from_this());
 }
 
 } // namespace v4s

@@ -29,14 +29,13 @@ public:
   Device(int fd, Capabilities Capabilities);
   ~Device();
 
-  BufType GetBufType(bool capture = true) const;
-
   int fd() const;
 
   static Device::Ptr from_devnode(const std::string &path);
 
   Capabilities GetCapabilities() const;
   std::optional<CaptureDevice> TryCapture();
+  std::optional<OutputDevice> TryOutput();
 };
 
 } // namespace v4s

@@ -1,14 +1,16 @@
 #include <chrono>
 #include <csignal>
 #include <memory>
-#include <spdlog/spdlog.h>
 #include <thread>
 #include <vector>
+
+#include <spdlog/spdlog.h>
 
 #include "http-server/http-server.h"
 #include "v4l/v4l_bridge.h"
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_device.h"
+#include "v4l/v4l_stream.h"
 
 #include "stream.h"
 
@@ -25,7 +27,7 @@ int main(int argc, char *argv[]) {
 
   spdlog::set_level(spdlog::level::debug);
   auto device = v4s::Device::from_devnode("/dev/video0");
-  auto isp_device = v4s::Device::from_devnode("/dev/video10");
+  auto isp_device = v4s::Device::from_devnode("/dev/video12");
   auto codec_device = v4s::Device::from_devnode("/dev/video11");
   std::vector<v4s::Bridge::Ptr> bridges{
       std::make_shared<v4s::Bridge>(device, isp_device),
@@ -34,7 +36,7 @@ int main(int argc, char *argv[]) {
   auto out_stream = codec_device->TryCapture();
   if (!out_stream)
     throw std::runtime_error("could not capture from output device");
-  auto stream = out_stream.value().Stream();
+  auto stream = std::make_shared<v4s::MMapStream>(out_stream);
   v4s::Server server;
   server.RegisterRoute(StreamRoutes(bridges, stream));
   // al tis was to handle the f'in address already in use

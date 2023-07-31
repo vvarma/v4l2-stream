@@ -19,10 +19,10 @@ struct StreamRoute : public v4s::Route {
   std::string Path() { return "/stream"; }
   void Handle(v4s::Request req, v4s::ResponseWriter rw) {
     try {
-      spdlog::info("Got a request to stream");
-      pipeline_.Start();
+      std::thread pipelineThread([&] { pipeline_.Start(); });
       v4s::MJpegEncoder encoder;
       rw.SetContentType(encoder.ContentType());
+      spdlog::debug("starting loop");
       while (true) {
         auto frame = pipeline_.Next();
         spdlog::debug("got a frame");

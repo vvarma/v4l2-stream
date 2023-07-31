@@ -1,24 +1,22 @@
-#ifndef V4L2_STREAM_V4L_CAPTURE_H
-#define V4L2_STREAM_V4L_CAPTURE_H
+#ifndef V4L2_STREAM_V4L_OUTPUT_H
+#define V4L2_STREAM_V4L_OUTPUT_H
+#include <memory>
+
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_framesize.h"
-
 namespace v4s {
-class CaptureDevice {
+class OutputDevice {
 public:
-  CaptureDevice(std::shared_ptr<Device> device);
-
+  OutputDevice(std::shared_ptr<Device> device);
   Format GetFormat() const;
-
   Format SetFormat(Format format);
-
-  BufType GetBufType() const;
-
   Device::Ptr Device() const;
+  BufType GetBufType() const;
 
 private:
   Device::Ptr device_;
 };
+
 } // namespace v4s
 
-#endif // !V4L2_STREAM_V4L_CAPTURE_H
+#endif // V4L2_STREAM_V4L_OUTPUT_H

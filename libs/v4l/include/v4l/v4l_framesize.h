@@ -8,6 +8,8 @@ namespace v4s {
 struct Format {
   Codec codec;
   uint32_t height, width;
+  bool operator==(const Format &other) const;
+  bool operator!=(const Format &other) const; 
 };
 
 struct DiscreteFrameSize {

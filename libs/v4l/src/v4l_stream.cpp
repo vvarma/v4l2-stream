@@ -97,28 +97,28 @@ public:
 };
 
 void MMapStream::DoStart() {
-  buffers = std::make_unique<internal::MMapBuffers>(device_, 4);
+  buffers = std::make_unique<internal::MMapBuffers>(device_.Device(), 4);
   for (int i = 0; i < buffers->NumBuffers(); ++i) {
     QueueBuffer(i);
   }
-  int bufType = device_->GetBufType();
-  int ret = ioctl(device_->fd(), VIDIOC_STREAMON, &bufType);
+  int bufType = device_.GetBufType();
+  int ret = ioctl(device_.Device()->fd(), VIDIOC_STREAMON, &bufType);
   if (ret < 0)
     throw Exception(fmt::format("Failed to start stream: {}", strerror(errno)));
 }
 void MMapStream::DoStop() {
-  int bufType = device_->GetBufType();
-  int ret = ioctl(device_->fd(), VIDIOC_STREAMOFF, &bufType);
+  int bufType = device_.GetBufType();
+  int ret = ioctl(device_.Device()->fd(), VIDIOC_STREAMOFF, &bufType);
   if (ret < 0)
     throw Exception(fmt::format("Failed to stop stream: {}", strerror(errno)));
   // todo lock
   buffers.reset();
 }
 
-MMapStream::MMapStream(Device::Ptr device) : Stream<MMapStream>(device) {}
+MMapStream::MMapStream(CaptureDevice device) : Stream<MMapStream>(device) {}
 void MMapStream::QueueBuffer(int idx) {
   v4l2_buffer buffer = buffers->PrepareV4L2Buffer(idx);
-  int ret = ioctl(device_->fd(), VIDIOC_QBUF, &buffer);
+  int ret = ioctl(device_.Device()->fd(), VIDIOC_QBUF, &buffer);
   if (ret < 0) {
     throw Exception(fmt::format("Failed to q buf {}", strerror(errno)));
   }
@@ -127,15 +127,15 @@ void MMapStream::QueueBuffer(int idx) {
 Frame::Ptr MMapStream::FetchNext() {
   v4l2_buffer buffer;
   memset(&buffer, 0, sizeof(v4l2_buffer));
-  buffer.type = device_->GetBufType();
+  buffer.type = device_.GetBufType();
   buffer.memory = V4L2_MEMORY_MMAP;
-  int ret = ioctl(device_->fd(), VIDIOC_DQBUF, &buffer);
+  int ret = ioctl(device_.Device()->fd(), VIDIOC_DQBUF, &buffer);
   if (ret < 0) {
     throw Exception(fmt::format("Failed to dq buf: {}", strerror(errno)));
   }
   auto next = buffer.index;
   std::vector<uint32_t> bytes_used;
-  if (device_->GetCapabilities().IsMPlane()) {
+  if (device_.Device()->GetCapabilities().IsMPlane()) {
     for (const auto &plane : buffers->GetPlanes(next)) {
       bytes_used.push_back(plane.bytesused);
     }
