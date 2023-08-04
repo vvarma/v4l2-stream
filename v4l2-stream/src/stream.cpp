@@ -20,6 +20,7 @@ struct StreamRoute : public v4s::Route {
     auto pipeline = loader_.Load(encoder_);
 
     try {
+      pipeline.Prepare();
       std::thread pipelineThread([&] { pipeline.Start(); });
       v4s::MJpegEncoder encoder;
       rw.SetContentType(encoder.ContentType());

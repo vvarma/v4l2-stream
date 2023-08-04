@@ -38,7 +38,6 @@ PipelineImpl::PipelineImpl(std::vector<Bridge::Ptr> bridges) {
   }
 }
 void PipelineImpl::Start() {
-  spdlog::info("starting pipeline");
   for (auto &io : ios_) {
     io->Start();
   }

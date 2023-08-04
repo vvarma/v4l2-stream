@@ -1,6 +1,7 @@
 #ifndef V4L2_STREAM_PIPELINE_H
 #define V4L2_STREAM_PIPELINE_H
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <vector>
 
 #include "encoder/encoder.h"
@@ -29,23 +30,35 @@ public:
 
   Pipeline(MMapStream::Ptr sink, Encoder<EncType> encoder)
       : Pipeline({}, sink, encoder) {}
+
   Pipeline(std::vector<Bridge::Ptr> bridges, MMapStream::Ptr sink,
            Encoder<EncType> encoder)
       : sink_(sink), encoder_(encoder), bridges_(bridges),
         pimpl_(std::make_unique<internal::PipelineImpl>(bridges)) {}
+
   ~Pipeline() = default;
-  void Start() {
-    std::optional<Format> last_fmt;
+
+  void Prepare() {
+    std::optional<Format> last_fmt = Format{
+        .codec = "RGGB",
+        .height = 480,
+        .width = 640,
+    };
     for (const auto &bridge : bridges_) {
       if (last_fmt) {
         auto fmt = last_fmt.value();
         fmt.codec = bridge->GetCaptureDevice().GetFormat().codec;
-        if (fmt != bridge->GetCaptureDevice().SetFormat(fmt)) {
+        auto updated_fmt = bridge->GetCaptureDevice().SetFormat(fmt);
+        if (fmt != updated_fmt) {
+          spdlog::error("Failed to set format: exp {} obs {}", fmt,
+                        updated_fmt);
           throw Exception("Failed to set format");
         }
       }
       auto fmt = bridge->GetCaptureDevice().GetFormat();
-      if (fmt != bridge->GetOutputDevice().SetFormat(fmt)) {
+      auto updated_fmt = bridge->GetOutputDevice().SetFormat(fmt);
+      if (fmt != updated_fmt) {
+        spdlog::error("Failed to set format: exp {} obs {}", fmt, updated_fmt);
         throw Exception("Failed to set format");
       }
       last_fmt = fmt;
@@ -53,10 +66,17 @@ public:
     if (last_fmt) {
       auto fmt = last_fmt.value();
       fmt.codec = sink_->GetDevice().GetFormat().codec;
-      if (fmt != sink_->GetDevice().SetFormat(fmt)) {
+      auto updated_fmt = sink_->GetDevice().SetFormat(fmt);
+      if (fmt != updated_fmt) {
+        spdlog::error("Failed to set format: exp {} obs {}", fmt, updated_fmt);
         throw Exception("Failed to set format");
       }
     }
+    spdlog::info("Finished configuring devices");
+  }
+
+  void Start() {
+    spdlog::info("Starting pipeline");
     pimpl_->Start();
   }
 

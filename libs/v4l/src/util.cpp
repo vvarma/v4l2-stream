@@ -1,13 +1,15 @@
 #include "util.h"
 
 #include <cstdint>
+#include <cstring>
 #include <linux/videodev2.h>
+#include <spdlog/spdlog.h>
+#include <sstream>
 #include <sys/ioctl.h>
-
-#include <fmt/format.h>
 #include <sys/mman.h>
 
-#include "v4l/v4l_codec.h"
+#include <fmt/format.h>
+
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_exception.h"
 #include "v4l/v4l_framesize.h"
@@ -59,30 +61,20 @@ void *allocateBuffer(int fd, int offset, size_t length) {
   return mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
 }
 
-v4s::Codec FromFourcc(uint32_t fourcc) {
-  switch (fourcc) {
-  case V4L2_PIX_FMT_MJPEG:
-    return v4s::Codec::MJPG;
-  case V4L2_PIX_FMT_YUYV:
-    return v4s::Codec::YUYV;
-  case V4L2_PIX_FMT_SRGGB8:
-    return v4s::Codec::RGGB;
-  default:
-    throw v4s::Exception("Unsupported format");
-  }
+std::string FromFourcc(unsigned int fourcc) {
+  std::stringstream ss;
+  ss << static_cast<char>(fourcc & 255)
+     << static_cast<char>((fourcc >> 8) & 255)
+     << static_cast<char>((fourcc >> 16) & 255)
+     << static_cast<char>((fourcc >> 24) & 255);
+  return ss.str();
 }
 
-uint32_t ToFourcc(v4s::Codec codec) {
-  switch (codec) {
-  case v4s::Codec::MJPG:
-    return V4L2_PIX_FMT_MJPEG;
-  case v4s::Codec::YUYV:
-    return V4L2_PIX_FMT_YUYV;
-  case v4s::Codec::RGGB:
-    return V4L2_PIX_FMT_SRGGB8;
-  default:
-    throw v4s::Exception("Unsupported format");
+unsigned int ToFourcc(std::string fourcc) {
+  if (fourcc.size() != 4) {
+    throw v4s::Exception("Invalid fourcc");
   }
+  return fourcc[3] << 24 | fourcc[2] << 16 | fourcc[1] << 8 | fourcc[0];
 }
 
 v4s::Format getFormat(v4s::Device::Ptr device, v4s::BufType buf_type) {
@@ -93,12 +85,15 @@ v4s::Format getFormat(v4s::Device::Ptr device, v4s::BufType buf_type) {
   if (ret < 0) {
     throw v4s::Exception("Failed to get format");
   }
-  return v4s::Format{FromFourcc(fmt.fmt.pix.pixelformat), fmt.fmt.pix.width,
-                     fmt.fmt.pix.height};
+  return v4s::Format{FromFourcc(fmt.fmt.pix.pixelformat), fmt.fmt.pix.height,
+                     fmt.fmt.pix.width};
 }
 
 v4s::Format setFormat(v4s::Device::Ptr device, v4s::BufType buf_type,
                       v4s::Format format) {
+  spdlog::debug("setting format for {} ({} - {}) to {}",
+                device->GetCapabilities().driver, device->fd(), buf_type,
+                format);
   v4l2_format fmt;
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = buf_type;
@@ -107,8 +102,9 @@ v4s::Format setFormat(v4s::Device::Ptr device, v4s::BufType buf_type,
   fmt.fmt.pix.pixelformat = ToFourcc(format.codec);
   int ret = ioctl(device->fd(), VIDIOC_S_FMT, &fmt);
   if (ret < 0) {
+    spdlog::error("Failed to set format {}:{}", format, strerror(errno));
     throw v4s::Exception("Failed to set format");
   }
-  return v4s::Format{FromFourcc(fmt.fmt.pix.pixelformat), fmt.fmt.pix.width,
-                     fmt.fmt.pix.height};
+  return v4s::Format{FromFourcc(fmt.fmt.pix.pixelformat), fmt.fmt.pix.height,
+                     fmt.fmt.pix.width};
 }
