@@ -13,6 +13,7 @@ class MJpegEncoder;
 
 template <> struct EncoderTraits<MJpegEncoder> {
   using Item = std::vector<uint8_t>;
+  constexpr static const char Codec[] = "MJPG";
 };
 
 class MJpegEncoder : public Encoder<MJpegEncoder> {

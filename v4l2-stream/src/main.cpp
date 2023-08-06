@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     std::signal(SIGINT, &sigIntHandler);
     std::signal(SIGTERM, &sigIntHandler);
 
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::trace);
     v4s::PipelineLoader loader(
         v4s::PipelineConfig::FromFile(options.pipeline_config));
     v4s::Server server;

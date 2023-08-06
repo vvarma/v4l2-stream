@@ -60,15 +60,15 @@ void Bridge::Start() {
   }
   int capture_buf_type = capture_device_.GetBufType();
   int output_buf_type = output_device_.GetBufType();
-  int ret = ioctl(capture_device->fd(), VIDIOC_STREAMON, &capture_buf_type);
+  int ret = ioctl(output_device->fd(), VIDIOC_STREAMON, &output_buf_type);
+  if (ret < 0) {
+    throw Exception("Failed to start output device");
+  }
+  ret = ioctl(capture_device->fd(), VIDIOC_STREAMON, &capture_buf_type);
   if (ret < 0) {
     spdlog::error("Failed to start capture device({}-{}): {}",
                   capture_device->fd(), capture_buf_type, strerror(errno));
     throw Exception("Failed to start capture device");
-  }
-  ret = ioctl(output_device->fd(), VIDIOC_STREAMON, &output_buf_type);
-  if (ret < 0) {
-    throw Exception("Failed to start output device");
   }
   spdlog::debug("Stream started for {}->{}",
                 capture_device->GetCapabilities().driver,
@@ -94,7 +94,7 @@ void Bridge::Stop() {
 void Bridge::ProcessRead() {
   auto output_device = output_device_.GetDevice();
   auto capture_device = capture_device_.GetDevice();
-  spdlog::debug("Process Read for {}->{}",
+  spdlog::trace("Process Read for {}->{}",
                 capture_device->GetCapabilities().driver,
                 output_device->GetCapabilities().driver);
   v4l2_buffer cap_buffer;
@@ -124,20 +124,26 @@ void Bridge::ProcessRead() {
     plane_info[0] = {buffers_->GetFd(cap_buffer.index, 0),
                      cap_buffer.bytesused};
   }
+  if (cap_buffer.flags & V4L2_BUF_FLAG_LAST) {
+    spdlog::info("Last buffer received for {}", capture_device->fd());
+  }
 
   v4l2_buffer buffer;
   memset(&buffer, 0, sizeof(v4l2_buffer));
   buffer.type = output_device_.GetBufType();
   buffer.memory = V4L2_MEMORY_DMABUF;
+  buffer.index = cap_buffer.index;
   std::vector<v4l2_plane> out_planes(plane_info.size());
   if (output_device->GetCapabilities().IsMPlane()) {
     for (size_t i = 0; i < out_planes.size(); ++i) {
       memset(&out_planes[i], 0, sizeof(v4l2_plane));
       out_planes[i].m.fd = plane_info[i].first;
       out_planes[i].bytesused = plane_info[i].second;
+      out_planes[i].length = plane_info[i].second;
     }
     buffer.m.planes = out_planes.data();
     buffer.length = out_planes.size();
+    buffer.bytesused = cap_buffer.bytesused;
   } else {
     buffer.m.fd = plane_info[0].first;
     buffer.bytesused = plane_info[0].second;
@@ -154,7 +160,7 @@ void Bridge::ProcessRead() {
 void Bridge::ProcessWrite() {
   auto output_device = output_device_.GetDevice();
   auto capture_device = capture_device_.GetDevice();
-  spdlog::debug("Process Write for {}->{}",
+  spdlog::trace("Process Write for {}->{}",
                 capture_device->GetCapabilities().driver,
                 output_device->GetCapabilities().driver);
   // dequeue output buffer and enqueue capture buffer

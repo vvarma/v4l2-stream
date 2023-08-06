@@ -20,6 +20,7 @@ public:
 
 private:
   std::vector<std::unique_ptr<BridgeIO>> ios_;
+  std::vector<Bridge::Ptr> bridges_;
 };
 } // namespace internal
 template <typename EncType> class Pipeline {
@@ -38,6 +39,7 @@ public:
 
   ~Pipeline() = default;
 
+  // [possible] may need to reverse order
   void Prepare() {
     std::optional<Format> last_fmt = Format{
         .codec = "RGGB",
@@ -65,7 +67,7 @@ public:
     }
     if (last_fmt) {
       auto fmt = last_fmt.value();
-      fmt.codec = sink_->GetDevice().GetFormat().codec;
+      fmt.codec = EncoderTraits<EncType>::Codec;
       auto updated_fmt = sink_->GetDevice().SetFormat(fmt);
       if (fmt != updated_fmt) {
         spdlog::error("Failed to set format: exp {} obs {}", fmt, updated_fmt);

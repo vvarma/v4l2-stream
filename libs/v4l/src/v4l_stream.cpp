@@ -40,6 +40,7 @@ class MMapBuffers {
 public:
   MMapBuffers(CaptureDevice device, int num_bufs)
       : buf_type_(device.GetBufType()),
+        num_planes_(getNumPlanes(device.GetDevice()->fd(), buf_type_)),
         planes_(allocatePlanes(device.GetDevice(), buf_type_, num_bufs)),
         buffers_(mapBuffers(device.GetDevice(), buf_type_, planes_)),
         device_(device.GetDevice()) {}
@@ -58,11 +59,12 @@ public:
   }
   std::vector<Buffer::Ptr> GetBuffers(int idx) { return buffers_[idx]; }
   std::vector<v4l2_plane> GetPlanes(int idx) { return planes_[idx]; }
-
+  uint32_t NumPlanes() const { return num_planes_; }
   int NumBuffers() const { return buffers_.size(); }
 
 private:
   BufType buf_type_;
+  uint32_t num_planes_;
   std::vector<std::vector<v4l2_plane>> planes_;
   std::vector<std::vector<Buffer::Ptr>> buffers_;
   std::shared_ptr<Device> device_;
@@ -98,6 +100,7 @@ public:
 };
 
 void MMapStream::DoStart() {
+  spdlog::info("starting stream");
   buffers = std::make_unique<internal::MMapBuffers>(device_, 4);
   for (int i = 0; i < buffers->NumBuffers(); ++i) {
     QueueBuffer(i);
@@ -108,6 +111,7 @@ void MMapStream::DoStart() {
     throw Exception(fmt::format("Failed to start stream: {}", strerror(errno)));
 }
 void MMapStream::DoStop() {
+  spdlog::info("stopping stream");
   int bufType = device_.GetBufType();
   int ret = ioctl(device_.GetDevice()->fd(), VIDIOC_STREAMOFF, &bufType);
   if (ret < 0)
@@ -130,10 +134,23 @@ Frame::Ptr MMapStream::FetchNext() {
   memset(&buffer, 0, sizeof(v4l2_buffer));
   buffer.type = device_.GetBufType();
   buffer.memory = V4L2_MEMORY_MMAP;
+  std::vector<v4l2_plane> planes(buffers->NumPlanes());
+  for (uint32_t i = 0; i < buffers->NumPlanes(); ++i) {
+    memset(&planes[i], 0, sizeof(v4l2_plane));
+  }
+  if (device_.GetDevice()->GetCapabilities().IsMPlane()) {
+    buffer.m.planes = planes.data();
+    buffer.length = planes.size();
+  }
   int ret = ioctl(device_.GetDevice()->fd(), VIDIOC_DQBUF, &buffer);
   if (ret < 0) {
     throw Exception(fmt::format("Failed to dq buf: {}", strerror(errno)));
   }
+  if (buffer.flags & V4L2_BUF_FLAG_LAST) {
+    spdlog::info("last buf");
+  }
+  buffer.flags &= ~V4L2_BUF_FLAG_LAST;
+
   auto next = buffer.index;
   std::vector<uint32_t> bytes_used;
   if (device_.GetDevice()->GetCapabilities().IsMPlane()) {
@@ -153,7 +170,7 @@ Frame::Ptr MMapStream::FetchNext() {
                                      bytes_used, buffer.sequence, frame_time,
                                      next);
 }
-MMapStream::~MMapStream() {}
+MMapStream::~MMapStream() { spdlog::info("destroying stream"); }
 
 v4s::internal::Buffer::Buffer(int fd, int offset, size_t length)
     : start(allocateBuffer(fd, offset, length)), length(length) {}
@@ -184,7 +201,7 @@ internal::mapBuffers(Device::Ptr device, BufType buf_type,
     if (mplane) {
       for (int planeIdx = 0; planeIdx < buf_planes.size(); ++planeIdx) {
         plane_buffers.push_back(std::make_unique<internal::Buffer>(
-            device->fd(), buf_planes[planeIdx].data_offset,
+            device->fd(), buf_planes[planeIdx].m.mem_offset,
             buf_planes[planeIdx].length));
       }
     } else {
