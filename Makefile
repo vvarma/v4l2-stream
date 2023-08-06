@@ -23,8 +23,8 @@ install:
 	cmake --install ${BUILD_DIR} --prefix ${INSTALL_DIR}
 
 .PHONY: dev
-dev: build
-	$(BUILD_DIR)/v4l2-stream/v4l2-stream
+dev: build install
+	$(INSTALL_DIR)/bin/v4l2-stream
 
 
 .PHONY: dev-docker-arm64

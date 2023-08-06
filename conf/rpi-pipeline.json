@@ -1,0 +1,7 @@
+{
+  "devices": [
+    "/dev/video0",
+    "/dev/video12",
+    "/dev/video11"
+  ]
+}
