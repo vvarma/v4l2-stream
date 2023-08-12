@@ -16,7 +16,8 @@ class PipelineLoader {
 
 public:
   explicit PipelineLoader(PipelineConfig config);
-  template <typename EncType> Pipeline<EncType> Load(Encoder<EncType> encoder) {
+  template <typename EncType>
+  Pipeline<EncType> Load(Encoder<EncType> encoder) const {
     if (devices_.empty()) {
       throw Exception("No devices to load");
     }

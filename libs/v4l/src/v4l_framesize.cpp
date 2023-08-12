@@ -1,5 +1,4 @@
 #include "v4l/v4l_framesize.h"
-#include <fmt/core.h>
 
 namespace v4s {
 bool Format::operator==(const Format &other) const {
@@ -7,4 +6,3 @@ bool Format::operator==(const Format &other) const {
 }
 bool Format::operator!=(const Format &other) const { return !(*this == other); }
 } // namespace v4s
-

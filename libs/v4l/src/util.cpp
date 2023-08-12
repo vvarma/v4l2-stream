@@ -3,12 +3,12 @@
 #include <cstdint>
 #include <cstring>
 #include <linux/videodev2.h>
-#include <spdlog/spdlog.h>
 #include <sstream>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
 #include <fmt/format.h>
+#include <spdlog/spdlog.h>
 
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_exception.h"
@@ -91,9 +91,8 @@ v4s::Format getFormat(v4s::Device::Ptr device, v4s::BufType buf_type) {
 
 v4s::Format setFormat(v4s::Device::Ptr device, v4s::BufType buf_type,
                       v4s::Format format) {
-  spdlog::debug("setting format for {} ({} - {}) to {}",
-                device->GetCapabilities().driver, device->fd(), buf_type,
-                format);
+  spdlog::debug("setting format for {} ({} ) to {}",
+                device->GetCapabilities().driver, device->fd(), format);
   v4l2_format fmt;
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = buf_type;

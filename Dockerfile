@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   ccache \
   ninja-build \
+  git \
   && rm -rf /var/lib/apt/lists/*
 ENV VIRTUAL_ENV=/venv
 RUN python3 -m venv $VIRTUAL_ENV

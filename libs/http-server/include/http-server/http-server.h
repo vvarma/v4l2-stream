@@ -1,12 +1,16 @@
 #ifndef V4L2_STREAM_HTTP_SERVER_H
 #define V4L2_STREAM_HTTP_SERVER_H
 
+#include <asio/awaitable.hpp>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 #include <sys/types.h>
 #include <vector>
+
+#include <asio.hpp>
+
 namespace v4s {
 
 namespace internal {
@@ -15,7 +19,7 @@ class RequestImpl;
 class ResponseWriterImpl;
 } // namespace internal
 
-struct ServerOpts{};
+struct ServerOpts {};
 
 class Request {
 public:
@@ -28,7 +32,9 @@ private:
 };
 
 class ResponseWriter {
-;public:
+  ;
+
+public:
   explicit ResponseWriter(std::shared_ptr<internal::ResponseWriterImpl> pimpl);
 
   void SetContentType(const std::string &content_type);
@@ -51,13 +57,11 @@ public:
   Server();
   ~Server();
 
-  void Start();
-  void Stop();
+  asio::awaitable<void> Start();
   void RegisterRoute(Route::Ptr route);
 
 private:
   std::unique_ptr<internal::ServerImpl> pimpl;
-  std::vector<Route::Ptr> routes_;
 };
 
 // Forward template declarations
