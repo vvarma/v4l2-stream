@@ -1,17 +1,18 @@
 #include "v4l/v4l_stream.h"
+
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <fmt/core.h>
+#include <linux/videodev2.h>
 #include <memory>
 #include <optional>
-#include <spdlog/spdlog.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <vector>
 
-#include <linux/videodev2.h>
+#include <spdlog/spdlog.h>
+#include <fmt/format.h>
 
 #include "v4l/v4l_caps.h"
 #include "v4l/v4l_device.h"

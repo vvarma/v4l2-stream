@@ -4,7 +4,6 @@
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
-#include <fmt/core.h>
 #include <memory>
 #include <optional>
 #include <unistd.h>

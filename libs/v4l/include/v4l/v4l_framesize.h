@@ -33,11 +33,11 @@ template <> struct formatter<v4s::Format> {
 
   template <typename FormatContext>
   auto format(const v4s::Format &v, FormatContext &ctx) -> decltype(ctx.out()) {
-    return format_to(ctx.out(), "height: {} width: {} fourCC: {}", v.height,
+    return fmt::format_to(ctx.out(), "height: {} width: {} fourCC: {}", v.height,
                      v.width, v.codec);
   }
 };
 
-} // namespace fmt
+} // namespace std
 
 #endif // !V4L2_STREAM_V4L_FRAMESIZE_H
