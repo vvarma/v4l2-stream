@@ -1,25 +1,24 @@
 #include "v4l/v4l_stream.h"
 
+#include <fmt/format.h>
+#include <linux/videodev2.h>
+#include <spdlog/spdlog.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <linux/videodev2.h>
 #include <memory>
 #include <optional>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
 #include <vector>
 
-#include <spdlog/spdlog.h>
-#include <fmt/format.h>
-
+#include "util.h"
 #include "v4l/v4l_caps.h"
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_exception.h"
 #include "v4l/v4l_frame.h"
-
-#include "util.h"
 
 namespace v4s {
 
@@ -33,12 +32,12 @@ struct Buffer {
   ~Buffer();
 };
 
-std::vector<std::vector<internal::Buffer::Ptr>>
-mapBuffers(Device::Ptr device, BufType buf_type,
-           const std::vector<std::vector<v4l2_plane>> &planes);
+std::vector<std::vector<internal::Buffer::Ptr>> mapBuffers(
+    Device::Ptr device, BufType buf_type,
+    const std::vector<std::vector<v4l2_plane>> &planes);
 
 class MMapBuffers {
-public:
+ public:
   MMapBuffers(CaptureDevice device, int num_bufs)
       : buf_type_(device.GetBufType()),
         num_planes_(getNumPlanes(device.GetDevice()->fd(), buf_type_)),
@@ -63,7 +62,7 @@ public:
   uint32_t NumPlanes() const { return num_planes_; }
   int NumBuffers() const { return buffers_.size(); }
 
-private:
+ private:
   BufType buf_type_;
   uint32_t num_planes_;
   std::vector<std::vector<v4l2_plane>> planes_;
@@ -71,7 +70,7 @@ private:
   std::shared_ptr<Device> device_;
 };
 
-} // namespace internal
+}  // namespace internal
 
 class MMapFrame : public Frame {
   MMapStream::Ptr stream_;
@@ -81,12 +80,16 @@ class MMapFrame : public Frame {
   uint64_t seq_id_;
   time_point frame_time_;
 
-public:
+ public:
   MMapFrame(MMapStream::Ptr stream, std::vector<internal::Buffer::Ptr> buffers,
             std::vector<uint32_t> bytes_used, uint64_t seq_id,
             time_point frame_time, int buffer_idx)
-      : stream_(stream), buffers_(buffers), bytes_used_(bytes_used),
-        buffer_idx_(buffer_idx), seq_id_(seq_id), frame_time_(frame_time) {}
+      : stream_(stream),
+        buffers_(buffers),
+        bytes_used_(bytes_used),
+        buffer_idx_(buffer_idx),
+        seq_id_(seq_id),
+        frame_time_(frame_time) {}
   ~MMapFrame() override { stream_->QueueBuffer(buffer_idx_); }
   void Process(uint32_t plane,
                std::function<void(uint8_t *, uint64_t)> fn) const override {
@@ -117,6 +120,7 @@ void MMapStream::DoStop() {
   int ret = ioctl(device_.GetDevice()->fd(), VIDIOC_STREAMOFF, &bufType);
   if (ret < 0)
     throw Exception(fmt::format("Failed to stop stream: {}", strerror(errno)));
+  requestBuffers(device_.GetDevice()->fd(), device_.GetBufType(), 0);
   // todo lock
   buffers.reset();
 }
@@ -171,16 +175,16 @@ Frame::Ptr MMapStream::FetchNext() {
                                      bytes_used, buffer.sequence, frame_time,
                                      next);
 }
-MMapStream::~MMapStream() { spdlog::info("destroying stream"); }
+MMapStream::~MMapStream() {}
 
 v4s::internal::Buffer::Buffer(int fd, int offset, size_t length)
     : start(allocateBuffer(fd, offset, length)), length(length) {}
 
 v4s::internal::Buffer::~Buffer() { munmap(start, length); }
 
-std::vector<std::vector<internal::Buffer::Ptr>>
-internal::mapBuffers(Device::Ptr device, BufType buf_type,
-                     const std::vector<std::vector<v4l2_plane>> &planes) {
+std::vector<std::vector<internal::Buffer::Ptr>> internal::mapBuffers(
+    Device::Ptr device, BufType buf_type,
+    const std::vector<std::vector<v4l2_plane>> &planes) {
   bool mplane = device->GetCapabilities().IsMPlane();
   std::vector<std::vector<internal::Buffer::Ptr>> buffers;
   for (int bufIdx = 0; bufIdx < planes.size(); ++bufIdx) {
@@ -214,4 +218,4 @@ internal::mapBuffers(Device::Ptr device, BufType buf_type,
   return buffers;
 }
 
-} // namespace v4s
+}  // namespace v4s

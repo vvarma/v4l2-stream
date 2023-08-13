@@ -6,7 +6,7 @@
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_framesize.h"
 
-uint16_t requestBuffers(int fd, v4s::BufType bufType, uint32_t num_bufs);
+uint32_t requestBuffers(int fd, v4s::BufType bufType, uint32_t num_bufs);
 
 uint32_t getNumPlanes(int fd, v4s::BufType bufType);
 

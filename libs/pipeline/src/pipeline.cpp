@@ -1,23 +1,24 @@
 #include "pipeline/pipeline.h"
 
-#include <cstring>
+#include <ev++.h>
 #include <linux/videodev2.h>
+#include <spdlog/spdlog.h>
 #include <sys/ioctl.h>
 #include <sys/poll.h>
+
+#include <cstring>
+#include <stop_token>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include <ev++.h>
-#include <spdlog/spdlog.h>
 
 #include "v4l/v4l_bridge.h"
 
 namespace v4s {
 namespace internal {
 class BridgeIO {
-public:
+ public:
   explicit BridgeIO(Bridge::Ptr bridge) : bridge_(bridge) {
     // write_io_.set<BridgeIO, &BridgeIO::WriteCb>(this);
     // write_io_.start(bridge->WriteFd(), ev::WRITE);
@@ -26,7 +27,7 @@ public:
   }
   void Start() { bridge_->Start(); }
 
-private:
+ private:
   void ReadCb(ev::io &w, int revents) {
     spdlog::debug("got a read cb {} {}", w.fd, revents);
     bridge_->ProcessRead();
@@ -45,7 +46,7 @@ PipelineImpl::PipelineImpl(std::vector<Bridge::Ptr> bridges)
     ios_.push_back(std::make_unique<BridgeIO>(bridge));
   }
 }
-void PipelineImpl::Start() {
+void PipelineImpl::Start(std::stop_token stop_token) {
   std::vector<pollfd> fds;
   typedef std::function<void()> callback;
   std::unordered_map<int, callback> read_callbacks;
@@ -88,10 +89,12 @@ void PipelineImpl::Start() {
   for (auto &bridge : bridges_) {
     bridge->Start();
   }
-  while (true) {
-    int ready = poll(fds.data(), fds.size(), -1);
+  while (!stop_token.stop_requested()) {
+    int ready = poll(fds.data(), fds.size(), 100);
     if (ready == -1) {
       throw Exception("poll failed");
+    } else if (ready == 0) {
+      continue;
     }
     for (auto &pfd : fds) {
       if (pfd.revents & POLLIN) {
@@ -120,7 +123,13 @@ void PipelineImpl::Start() {
     }
   }
 }
-PipelineImpl::~PipelineImpl() {}
-} // namespace internal
+PipelineImpl::~PipelineImpl() {
+  for (auto &bridge : bridges_) {
+    bridge->Stop();
+  }
 
-} // namespace v4s
+  spdlog::info("Cleaning up pipeline");
+}
+}  // namespace internal
+
+}  // namespace v4s

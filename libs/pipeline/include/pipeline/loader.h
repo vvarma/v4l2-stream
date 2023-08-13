@@ -13,8 +13,7 @@
 namespace v4s {
 
 class PipelineLoader {
-
-public:
+ public:
   explicit PipelineLoader(PipelineConfig config);
   template <typename EncType>
   Pipeline<EncType> Load(Encoder<EncType> encoder) const {
@@ -43,13 +42,14 @@ public:
     if (!cap_device) {
       throw Exception("Pipeline needs a capture device");
     }
-    return v4s::Pipeline<EncType>(
+    v4s::Pipeline<EncType> pipeline(
         bridges, std::make_shared<MMapStream>(cap_device.value()), encoder);
+    return pipeline;
   }
 
-private:
+ private:
   std::vector<Device::Ptr> devices_;
 };
-} // namespace v4s
+}  // namespace v4s
 
-#endif // !#ifndef V4L2_STREAM_PIPELINE_LOADER_H
+#endif  // !#ifndef V4L2_STREAM_PIPELINE_LOADER_H

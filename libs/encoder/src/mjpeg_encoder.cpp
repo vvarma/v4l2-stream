@@ -32,6 +32,6 @@ std::vector<uint8_t> MJpegEncoder::EncodeFrame(Frame::Ptr frame) {
   return buf;
 }
 
-std::string MJpegEncoder::ContentType() { return kHeader; }
+std::string MJpegEncoder::ContentType() const { return kHeader; }
 
 }  // namespace v4s

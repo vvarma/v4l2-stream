@@ -1,17 +1,16 @@
 #include "v4l/v4l_bridge.h"
 
+#include <linux/videodev2.h>
+#include <spdlog/spdlog.h>
+#include <sys/ioctl.h>
+
 #include <cerrno>
 #include <cstring>
-#include <linux/videodev2.h>
-#include <sys/ioctl.h>
 #include <vector>
 
-#include <spdlog/spdlog.h>
-
+#include "util.h"
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_exception.h"
-
-#include "util.h"
 
 namespace v4s {
 
@@ -22,19 +21,19 @@ namespace internal {
 std::vector<std::vector<int>> mapBuffers(Device::Ptr device, BufType buf_type,
                                          int num_bufs, int num_planes);
 class BridgeBuffers {
-public:
+ public:
   BridgeBuffers(Device::Ptr capture_device, BufType buf_type, int num_bufs);
   int NumBufs() const { return dma_fds_.size(); }
   int NumPlanes() const { return num_planes_; }
   int GetFd(int idx, int plane) const { return dma_fds_[idx][plane]; }
 
-private:
+ private:
   std::shared_ptr<Device> device_;
   BufType buf_type_;
   int num_bufs_, num_planes_;
   std::vector<std::vector<int>> dma_fds_;
 };
-} // namespace internal
+}  // namespace internal
 
 Bridge::Bridge(CaptureDevice capture_device, OutputDevice output_device)
     : capture_device_(capture_device), output_device_(output_device) {}
@@ -84,10 +83,12 @@ void Bridge::Stop() {
   if (ret < 0) {
     throw Exception("Failed to stop capture device");
   }
+  requestBuffers(capture_device->fd(), capture_device_.GetBufType(), 0);
   ret = ioctl(output_device->fd(), VIDIOC_STREAMOFF, &output_buf_type);
   if (ret < 0) {
     throw Exception("Failed to stop output device");
   }
+  requestOutputDMABuffers(output_device, output_device_.GetBufType(), 0);
   buffers_ = nullptr;
 }
 
@@ -217,7 +218,8 @@ Bridge::~Bridge() {}
 
 internal::BridgeBuffers::BridgeBuffers(Device::Ptr capture_device,
                                        BufType buf_type, int num_bufs)
-    : device_(capture_device), buf_type_(buf_type),
+    : device_(capture_device),
+      buf_type_(buf_type),
       num_bufs_(requestBuffers(device_->fd(), buf_type_, num_bufs)),
       num_planes_(getNumPlanes(device_->fd(), buf_type_)),
       dma_fds_(mapBuffers(device_, buf_type_, num_bufs_, num_planes_)) {}
@@ -273,4 +275,4 @@ void requestOutputDMABuffers(Device::Ptr device, BufType buf_type,
     throw Exception("Failed to allocate requested number of buffers");
   }
 }
-} // namespace v4s
+}  // namespace v4s

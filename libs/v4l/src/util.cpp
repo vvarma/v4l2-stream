@@ -14,11 +14,11 @@
 #include "v4l/v4l_exception.h"
 #include "v4l/v4l_framesize.h"
 
-uint16_t requestBuffers(int fd, v4s::BufType bufType, uint32_t num_bufs) {
+uint32_t requestBuffers(int fd, v4s::BufType bufType, uint32_t num_bufs) {
   v4l2_requestbuffers requestbuffers;
   memset(&requestbuffers, 0, sizeof(v4l2_requestbuffers));
   requestbuffers.type = bufType;
-  requestbuffers.count = 4;
+  requestbuffers.count = num_bufs;
   requestbuffers.memory = V4L2_MEMORY_MMAP;
   int ret = ioctl(fd, VIDIOC_REQBUFS, &requestbuffers);
   if (ret < 0)

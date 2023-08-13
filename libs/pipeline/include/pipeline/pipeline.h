@@ -1,7 +1,9 @@
 #ifndef V4L2_STREAM_PIPELINE_H
 #define V4L2_STREAM_PIPELINE_H
-#include <memory>
 #include <spdlog/spdlog.h>
+
+#include <memory>
+#include <stop_token>
 #include <vector>
 
 #include "encoder/encoder.h"
@@ -13,19 +15,19 @@ namespace v4s {
 namespace internal {
 struct BridgeIO;
 class PipelineImpl {
-public:
+ public:
   PipelineImpl(std::vector<Bridge::Ptr> bridges);
-  void Start();
+  void Start(std::stop_token stop_token);
   ~PipelineImpl();
 
-private:
+ private:
   std::vector<std::unique_ptr<BridgeIO>> ios_;
   std::vector<Bridge::Ptr> bridges_;
 };
-} // namespace internal
-template <typename EncType> class Pipeline {
-
-public:
+}  // namespace internal
+template <typename EncType>
+class Pipeline {
+ public:
   using OutType = typename Encoder<EncType>::Item;
   OutType Next();
 
@@ -34,10 +36,12 @@ public:
 
   Pipeline(std::vector<Bridge::Ptr> bridges, MMapStream::Ptr sink,
            Encoder<EncType> encoder)
-      : sink_(sink), encoder_(encoder), bridges_(bridges),
-        pimpl_(std::make_unique<internal::PipelineImpl>(bridges)) {}
+      : sink_(sink),
+        encoder_(encoder),
+        bridges_(bridges),
+        pimpl_(std::make_shared<internal::PipelineImpl>(bridges)) {}
 
-  ~Pipeline() = default;
+  ~Pipeline() { sink_->DoStop(); }
 
   // [possible] may need to reverse order
   void Prepare() {
@@ -77,21 +81,21 @@ public:
     spdlog::info("Finished configuring devices");
   }
 
-  void Start() {
+  void Start(std::stop_token stop_token) {
     spdlog::info("Starting pipeline");
-    pimpl_->Start();
+    pimpl_->Start(stop_token);
   }
 
-private:
+ private:
   MMapStream::Ptr sink_;
   Encoder<EncType> encoder_;
   std::vector<Bridge::Ptr> bridges_;
-  std::unique_ptr<internal::PipelineImpl> pimpl_;
+  std::shared_ptr<internal::PipelineImpl> pimpl_;
 };
 template <typename EncType>
 typename Pipeline<EncType>::OutType Pipeline<EncType>::Next() {
   return encoder_.Encode(sink_->Next());
 }
-} // namespace v4s
+}  // namespace v4s
 
-#endif // !V4L2_STREAM_PIPELINE_H
+#endif  // !V4L2_STREAM_PIPELINE_H
