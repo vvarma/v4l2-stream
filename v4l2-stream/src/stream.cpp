@@ -10,32 +10,32 @@
 #include <thread>
 #include <vector>
 
+#include "encoder/encoder.h"
 #include "encoder/mjpeg_encoder.h"
 #include "http-server/enum.h"
 #include "http-server/route.h"
-#include "pipeline/loader.h"
 #include "pipeline/pipeline.h"
 #include "v4l/v4l_bridge.h"
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_stream.h"
-const v4s::MJpegEncoder kEncoder;
 
 struct Handler : public hs::Handler {
   hs::Generator<hs::Response> Handle(const hs::Request &req) override {
-    pipeline.Prepare();
+    v4s::MJpegEncoder encoder;
+    pipeline.Prepare(v4s::EncoderTraits<v4s::MJpegEncoder>::Codec);
     pipelineThread =
         std::jthread([&](std::stop_token st) { pipeline.Start(st); },
                      stop_source.get_token());
     try {
       co_yield hs::StatusCode::Ok;
       hs::Headers headers = {
-          {"Content-Type", kEncoder.ContentType()},
+          {"Content-Type", encoder.ContentType()},
       };
       co_yield headers;
       spdlog::debug("starting loop");
       while (!IsDone()) {
-        auto frame = pipeline.Next();
+        auto frame = encoder.EncodeFrame(pipeline.Next());
         co_yield std::make_shared<
             hs::WritableResponseBody<std::vector<uint8_t>>>(frame);
       }
@@ -45,12 +45,12 @@ struct Handler : public hs::Handler {
     }
   }
 
-  Handler(v4s::PipelineLoader loader) : pipeline(loader.Load(kEncoder)) {}
+  Handler(v4s::Pipeline pipeline) : pipeline(pipeline) {}
   ~Handler() {
     stop_source.request_stop();
     pipelineThread.join();
   }
-  v4s::Pipeline<v4s::MJpegEncoder> pipeline;
+  v4s::Pipeline pipeline;
   std::jthread pipelineThread;
   std::stop_source stop_source;
 };
@@ -58,12 +58,12 @@ struct Route : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::GET; }
   std::string GetPath() const override { return "/stream"; }
   hs::Handler::Ptr GetHandler() const override {
-    return std::make_shared<Handler>(loader);
+    return std::make_shared<Handler>(pipeline);
   }
-  Route(v4s::PipelineLoader loader) : loader(loader) {}
+  Route(v4s::Pipeline pipeline) : pipeline(pipeline) {}
 
-  v4s::PipelineLoader loader;
+  v4s::Pipeline pipeline;
 };
-hs::Route::Ptr StreamRoutes(v4s::PipelineLoader loader) {
-  return std::make_shared<Route>(loader);
+hs::Route::Ptr StreamRoutes(v4s::Pipeline pipeline) {
+  return std::make_shared<Route>(pipeline);
 }

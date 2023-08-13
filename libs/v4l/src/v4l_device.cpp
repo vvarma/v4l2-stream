@@ -1,24 +1,58 @@
 #include "v4l/v4l_device.h"
 
-#include <bitset>
-#include <cerrno>
-#include <cstring>
+#include <asm-generic/errno-base.h>
 #include <fcntl.h>
-#include <memory>
-#include <optional>
+#include <fmt/format.h>
+#include <linux/videodev2.h>
+#include <spdlog/spdlog.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <linux/videodev2.h>
-#include <sys/ioctl.h>
-
-#include <fmt/format.h>
+#include <bitset>
+#include <cerrno>
+#include <cstdint>
+#include <cstring>
+#include <memory>
+#include <optional>
 
 #include "v4l/v4l_caps.h"
 #include "v4l/v4l_capture.h"
+#include "v4l/v4l_controls.h"
 #include "v4l/v4l_exception.h"
 #include "v4l/v4l_output.h"
 
+std::vector<v4s::Control::Ptr> QueryControls(int fd) {
+  std::vector<v4s::Control::Ptr> controls;
+
+  v4l2_query_ext_ctrl queryctrl;
+  uint32_t start_id = V4L2_CID_BASE;
+
+  while (true) {
+    start_id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+
+    memset(&queryctrl, 0, sizeof(queryctrl));
+    queryctrl.id = start_id;
+    int ret = ioctl(fd, VIDIOC_QUERY_EXT_CTRL, &queryctrl);
+    if (ret < 0) {
+      break;
+    }
+    switch (queryctrl.type) {
+      case V4L2_CTRL_TYPE_INTEGER:
+        controls.push_back(std::make_shared<v4s::IntControl>(
+            queryctrl.id, queryctrl.name, queryctrl.minimum, queryctrl.maximum,
+            queryctrl.default_value, 0, queryctrl.step));
+        break;
+      default:
+        spdlog::info("Unk Control: {} type: {}", queryctrl.name,
+                     queryctrl.type);
+    };
+    start_id = queryctrl.id;
+  }
+  return controls;
+}
+
 namespace v4s {
+
 Capabilities getCapabilities(int fd) {
   v4l2_capability cap;
   memset(&cap, 0, sizeof(cap));
@@ -37,7 +71,7 @@ Capabilities getCapabilities(int fd) {
 }
 
 Device::Device(int fd, Capabilities capabilities)
-    : fd_(fd), capabilities_(capabilities) {}
+    : fd_(fd), capabilities_(capabilities), controls_(QueryControls(fd_)) {}
 
 Device::Ptr Device::from_devnode(const std::string &path) {
   int fd = open(path.c_str(), O_RDWR);
@@ -71,4 +105,21 @@ std::optional<OutputDevice> Device::TryOutput() {
   return OutputDevice(shared_from_this());
 }
 
-} // namespace v4s
+std::vector<Control::Ptr> Device::GetControls() {
+  for (auto &control : controls_) {
+    control->UpdateCurrent(fd_);
+  }
+  return controls_;
+}
+
+void Device::SetControl(uint32_t id, int64_t val) {
+  for (auto &control : controls_) {
+    if (control->id == id) {
+      control->SetControl(fd_, val);
+      return;
+    }
+  }
+  throw Exception(fmt::format("Control {} not found", id));
+}
+
+}  // namespace v4s

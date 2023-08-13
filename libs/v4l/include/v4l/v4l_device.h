@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "v4l/v4l_controls.h"
 #include "v4l_caps.h"
 
 namespace v4s {
@@ -22,8 +23,9 @@ class OutputDevice;
 class Device : public std::enable_shared_from_this<Device> {
   int fd_;
   Capabilities capabilities_;
+  std::vector<Control::Ptr> controls_;
 
-public:
+ public:
   typedef std::shared_ptr<Device> Ptr;
 
   Device(int fd, Capabilities Capabilities);
@@ -36,8 +38,11 @@ public:
   Capabilities GetCapabilities() const;
   std::optional<CaptureDevice> TryCapture();
   std::optional<OutputDevice> TryOutput();
+
+  std::vector<Control::Ptr> GetControls();
+  void SetControl(uint32_t id, int64_t val);
 };
 
-} // namespace v4s
+}  // namespace v4s
 
-#endif // !V4L2_STREAM_DEVICE_H
+#endif  // !V4L2_STREAM_DEVICE_H

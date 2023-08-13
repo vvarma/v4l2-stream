@@ -3,7 +3,7 @@
 
 #include <http-server/http-server.h>
 
-#include "pipeline/loader.h"
-hs::Route::Ptr StreamRoutes(v4s::PipelineLoader loader);
+#include "pipeline/pipeline.h"
+hs::Route::Ptr StreamRoutes(v4s::Pipeline pipeline);
 
 #endif  // !V4L2_STREAM_STREAM_H

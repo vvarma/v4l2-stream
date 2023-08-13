@@ -10,6 +10,7 @@
 #include <thread>
 #include <vector>
 
+#include "ctrls.h"
 #include "http-server/http-server.h"
 #include "pipeline/config.h"
 #include "pipeline/loader.h"
@@ -38,12 +39,16 @@ int main(int argc, char *argv[]) {
     asio::signal_set signals(io_context, SIGINT, SIGTERM);
     signals.async_wait([&](auto, auto) { io_context.stop(); });
 
-    v4s::PipelineLoader loader(
-        v4s::PipelineConfig::FromFile(options.pipeline_config));
+    auto pipeline = v4s::PipelineLoader(
+                        v4s::PipelineConfig::FromFile(options.pipeline_config))
+                        .Load();
     auto server = std::make_shared<hs::HttpServer>(
         hs::Config("v4l2-stream", "0.0.0.0", 4891));
 
-    server->AddRoute(StreamRoutes(loader));
+    server->AddRoute(StreamRoutes(pipeline));
+    for (auto &route : CtrlRoutes(pipeline)) {
+      server->AddRoute(route);
+    }
 
     co_spawn(io_context, server->ServeAsync(), detached);
     io_context.run();
