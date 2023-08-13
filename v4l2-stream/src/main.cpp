@@ -24,13 +24,14 @@ using asio::detached;
 
 struct Options {
   std::string pipeline_config;
+  std::optional<spdlog::level::level_enum> log_level = spdlog::level::info;
 };
-STRUCTOPT(Options, pipeline_config);
+STRUCTOPT(Options, pipeline_config, log_level);
 
 int main(int argc, char *argv[]) {
   try {
     auto options = structopt::app("v4l2-stream").parse<Options>(argc, argv);
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(options.log_level.value());
 
     asio::io_context io_context(1);
 
@@ -39,7 +40,8 @@ int main(int argc, char *argv[]) {
 
     v4s::PipelineLoader loader(
         v4s::PipelineConfig::FromFile(options.pipeline_config));
-    auto server = std::make_shared<hs::HttpServer>();
+    auto server = std::make_shared<hs::HttpServer>(
+        hs::Config("v4l2-stream", "0.0.0.0", 4891));
 
     server->AddRoute(StreamRoutes(loader));
 

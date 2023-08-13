@@ -11,17 +11,18 @@ namespace v4s {
 
 class MJpegEncoder;
 
-template <> struct EncoderTraits<MJpegEncoder> {
+template <>
+struct EncoderTraits<MJpegEncoder> {
   using Item = std::vector<uint8_t>;
   constexpr static const char Codec[] = "MJPG";
 };
 
 class MJpegEncoder : public Encoder<MJpegEncoder> {
-public:
+ public:
   Item EncodeFrame(Frame::Ptr frame);
-  std::string ContentType();
+  std::string ContentType() const;
 };
 
-} // namespace v4s
+}  // namespace v4s
 
-#endif // !V4L2_STREAM_ENCODER_MJPEG_ENCODER_H
+#endif  // !V4L2_STREAM_ENCODER_MJPEG_ENCODER_H
