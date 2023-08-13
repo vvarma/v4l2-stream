@@ -13,39 +13,29 @@
 #include <unordered_set>
 #include <vector>
 
-#include "v4l/v4l_bridge.h"
+#include "pipeline_impl.h"
 
 namespace v4s {
 namespace internal {
-class BridgeIO {
- public:
-  explicit BridgeIO(Bridge::Ptr bridge) : bridge_(bridge) {
-    // write_io_.set<BridgeIO, &BridgeIO::WriteCb>(this);
-    // write_io_.start(bridge->WriteFd(), ev::WRITE);
-    // read_io_.set<BridgeIO, &BridgeIO::ReadCb>(this);
-    // read_io_.start(bridge->ReadFd(), ev::READ);
-  }
-  void Start() { bridge_->Start(); }
+BridgeIO::BridgeIO(Bridge::Ptr bridge) : bridge_(bridge) {}
+void BridgeIO::Start() { bridge_->Start(); }
 
- private:
-  void ReadCb(ev::io &w, int revents) {
-    spdlog::debug("got a read cb {} {}", w.fd, revents);
-    bridge_->ProcessRead();
-  }
-  void WriteCb(ev::io &w, int revents) {
-    spdlog::debug("got a write cb {} {}", w.fd, revents);
-    bridge_->ProcessWrite();
-  }
-  Bridge::Ptr bridge_;
-  ev::io read_io_, write_io_;
-};
-
-PipelineImpl::PipelineImpl(std::vector<Bridge::Ptr> bridges)
-    : bridges_(bridges) {
+PipelineImpl::PipelineImpl(MMapStream::Ptr sink,
+                           std::vector<Bridge::Ptr> bridges)
+    : sink_(sink), bridges_(bridges) {
   for (auto bridge : bridges) {
     ios_.push_back(std::make_unique<BridgeIO>(bridge));
   }
 }
+v4s::Frame::Ptr PipelineImpl::Next() { return sink_->Next(); }
+
+Device::Ptr PipelineImpl::GetSource() const {
+  if (bridges_.empty()) {
+    return sink_->GetDevice().GetDevice();
+  }
+  return bridges_[0]->GetCaptureDevice().GetDevice();
+}
+
 void PipelineImpl::Start(std::stop_token stop_token) {
   std::vector<pollfd> fds;
   typedef std::function<void()> callback;
@@ -123,13 +113,62 @@ void PipelineImpl::Start(std::stop_token stop_token) {
     }
   }
 }
+void PipelineImpl::Prepare(std::string sink_codec) {
+  std::optional<Format> last_fmt = Format{
+      .codec = "RGGB",
+      .height = 480,
+      .width = 640,
+  };
+  for (const auto &bridge : bridges_) {
+    if (last_fmt) {
+      auto fmt = last_fmt.value();
+      fmt.codec = bridge->GetCaptureDevice().GetFormat().codec;
+      auto updated_fmt = bridge->GetCaptureDevice().SetFormat(fmt);
+      if (fmt != updated_fmt) {
+        spdlog::error("Failed to set format: exp {} obs {}", fmt, updated_fmt);
+        throw Exception("Failed to set format");
+      }
+    }
+    auto fmt = bridge->GetCaptureDevice().GetFormat();
+    auto updated_fmt = bridge->GetOutputDevice().SetFormat(fmt);
+    if (fmt != updated_fmt) {
+      spdlog::error("Failed to set format: exp {} obs {}", fmt, updated_fmt);
+      throw Exception("Failed to set format");
+    }
+    last_fmt = fmt;
+  }
+  if (last_fmt) {
+    auto fmt = last_fmt.value();
+    fmt.codec = sink_codec;
+    auto updated_fmt = sink_->GetDevice().SetFormat(fmt);
+    if (fmt != updated_fmt) {
+      spdlog::error("Failed to set format: exp {} obs {}", fmt, updated_fmt);
+      throw Exception("Failed to set format");
+    }
+  }
+  spdlog::info("Finished configuring devices");
+}
 PipelineImpl::~PipelineImpl() {
+  sink_->DoStop();
   for (auto &bridge : bridges_) {
     bridge->Stop();
   }
-
   spdlog::info("Cleaning up pipeline");
 }
 }  // namespace internal
+
+Pipeline::Pipeline(std::shared_ptr<internal::PipelineImpl> pimpl)
+    : pimpl_(pimpl) {}
+Pipeline::~Pipeline() {}
+
+void Pipeline::Prepare(std::string sink_codec) { pimpl_->Prepare(sink_codec); }
+void Pipeline::Start(std::stop_token stop_token) {
+  spdlog::info("Starting pipeline");
+  pimpl_->Start(stop_token);
+}
+
+Device::Ptr Pipeline::GetSource() const { return pimpl_->GetSource(); }
+
+v4s::Frame::Ptr Pipeline::Next() { return pimpl_->Next(); }
 
 }  // namespace v4s
