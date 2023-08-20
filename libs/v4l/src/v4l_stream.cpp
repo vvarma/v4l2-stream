@@ -91,10 +91,10 @@ class MMapFrame : public Frame {
         seq_id_(seq_id),
         frame_time_(frame_time) {}
   ~MMapFrame() override { stream_->QueueBuffer(buffer_idx_); }
-  void Process(uint32_t plane,
-               std::function<void(uint8_t *, uint64_t)> fn) const override {
-    fn(static_cast<uint8_t *>(buffers_[plane]->start), bytes_used_[plane]);
+  const void *Data(uint32_t plane) const override {
+    return buffers_[plane]->start;
   }
+  size_t Size(uint32_t plane) const override { return bytes_used_[plane]; }
 
   uint64_t SeqId() const override { return seq_id_; }
 

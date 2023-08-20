@@ -8,28 +8,26 @@
 #include <iterator>
 #include <string>
 
+#include "coro/generator.hpp"
+#include "encoded_parts.h"
+#include "encoder/encoder.h"
 #include "v4l/v4l_frame.h"
 namespace v4s {
 
 constexpr char kBoundary[] = "v4s-versionId";
 constexpr char kHeader[] = "multipart/x-mixed-replace;boundary=v4s-versionId";
 
-std::vector<uint8_t> MJpegEncoder::EncodeFrame(Frame::Ptr frame) {
+coro::generator<EncodedPart> MJpegEncoder::EncodeFrame(Frame::Ptr frame) {
   assert(frame->NumPlanes() == 1);
 
   std::vector<uint8_t> buf;
-  std::string part = "Content-Type: image/jpeg\r\n";
-  std::copy(part.begin(), part.end(), std::back_inserter(buf));
-
-  frame->Process(0, [&buf](uint8_t *data, uint64_t len) {
-    auto part = fmt::format("Content-Length: {}\r\n\r\n", len);
-    std::copy(part.begin(), part.end(), std::back_inserter(buf));
-    std::copy(data, data + len, std::back_inserter(buf));
-    part = fmt::format("\r\n--{}\r\n", kBoundary);
-    std::copy(part.begin(), part.end(), std::back_inserter(buf));
-  });
-
-  return buf;
+  size_t size = frame->Size(0);
+  co_yield EncodedPart(
+      std::make_shared<internal::EncodedStringPart>(fmt::format(
+          "Content-Type: image/jpeg\r\nContent-Length: {}\r\n\r\n", size)));
+  co_yield EncodedPart(std::make_shared<internal::EncodedPlanePart>(frame, 0));
+  co_yield EncodedPart(std::make_shared<internal::EncodedStringPart>(
+      fmt::format("\r\n--{}\r\n", kBoundary)));
 }
 
 std::string MJpegEncoder::ContentType() const { return kHeader; }

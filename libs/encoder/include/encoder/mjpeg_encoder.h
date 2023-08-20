@@ -1,6 +1,7 @@
 #ifndef V4L2_STREAM_ENCODER_MJPEG_ENCODER_H
 #define V4L2_STREAM_ENCODER_MJPEG_ENCODER_H
 
+#include <coro/generator.hpp>
 #include <cstdint>
 #include <vector>
 
@@ -13,13 +14,12 @@ class MJpegEncoder;
 
 template <>
 struct EncoderTraits<MJpegEncoder> {
-  using Item = std::vector<uint8_t>;
   constexpr static const char Codec[] = "MJPG";
 };
 
 class MJpegEncoder : public Encoder<MJpegEncoder> {
  public:
-  Item EncodeFrame(Frame::Ptr frame);
+  coro::generator<EncodedPart> EncodeFrame(Frame::Ptr frame);
   std::string ContentType() const;
 };
 
