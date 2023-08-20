@@ -35,9 +35,11 @@ struct Handler : public hs::Handler {
       co_yield headers;
       spdlog::debug("starting loop");
       while (!IsDone()) {
+        for (auto frame : encoder.EncodeFrame(pipeline.Next())) {
+          co_yield std::make_shared<hs::WritableResponseBody<v4s::EncodedPart>>(
+              frame);
+        }
         auto frame = encoder.EncodeFrame(pipeline.Next());
-        co_yield std::make_shared<
-            hs::WritableResponseBody<std::vector<uint8_t>>>(frame);
       }
       spdlog::info("finished streaming");
     } catch (std::exception &e) {
