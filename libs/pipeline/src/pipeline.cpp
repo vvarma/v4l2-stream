@@ -1,6 +1,5 @@
 #include "pipeline/pipeline.h"
 
-#include <ev++.h>
 #include <linux/videodev2.h>
 #include <spdlog/spdlog.h>
 #include <sys/ioctl.h>
@@ -112,6 +111,12 @@ void PipelineImpl::Start(std::stop_token stop_token) {
       }
     }
   }
+
+  // todo RAII
+  sink_->Stop();
+  for (auto &bridge : bridges_) {
+    bridge->Stop();
+  }
 }
 void PipelineImpl::Prepare(std::string sink_codec) {
   std::optional<Format> last_fmt = Format{
@@ -148,13 +153,7 @@ void PipelineImpl::Prepare(std::string sink_codec) {
   }
   spdlog::info("Finished configuring devices");
 }
-PipelineImpl::~PipelineImpl() {
-  sink_->DoStop();
-  for (auto &bridge : bridges_) {
-    bridge->Stop();
-  }
-  spdlog::info("Cleaning up pipeline");
-}
+PipelineImpl::~PipelineImpl() { spdlog::info("Cleaning up pipeline"); }
 }  // namespace internal
 
 Pipeline::Pipeline(std::shared_ptr<internal::PipelineImpl> pimpl)

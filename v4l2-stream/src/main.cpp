@@ -4,6 +4,7 @@
 #include <asio.hpp>
 #include <asio/use_awaitable.hpp>
 #include <chrono>
+#include <coro/sync_wait.hpp>
 #include <csignal>
 #include <memory>
 #include <structopt/app.hpp>
@@ -20,8 +21,7 @@
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_stream.h"
 
-using asio::co_spawn;
-using asio::detached;
+using namespace std::chrono_literals;
 
 struct Options {
   std::string pipeline_config;
@@ -36,9 +36,6 @@ int main(int argc, char *argv[]) {
 
     asio::io_context io_context(1);
 
-    asio::signal_set signals(io_context, SIGINT, SIGTERM);
-    signals.async_wait([&](auto, auto) { io_context.stop(); });
-
     auto pipeline = v4s::PipelineLoader(
                         v4s::PipelineConfig::FromFile(options.pipeline_config))
                         .Load();
@@ -50,7 +47,9 @@ int main(int argc, char *argv[]) {
       server->AddRoute(route);
     }
 
-    co_spawn(io_context, server->ServeAsync(), detached);
+    std::jthread t([&]() { coro::sync_wait(server->ServeAsync(io_context)); });
+    std::this_thread::sleep_for(1s);
+    // signals.async_wait([&](auto, auto) { io_context.stop(); });
     io_context.run();
     return 0;
   } catch (structopt::exception &e) {

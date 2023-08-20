@@ -1,6 +1,5 @@
 find_package(spdlog REQUIRED)
 find_package(fmt REQUIRED)
-find_package(libev REQUIRED)
 find_package(structopt REQUIRED)
 find_package(nlohmann_json REQUIRED)
 

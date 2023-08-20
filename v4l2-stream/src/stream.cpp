@@ -21,7 +21,7 @@
 #include "v4l/v4l_stream.h"
 
 struct Handler : public hs::Handler {
-  hs::Generator<hs::Response> Handle(const hs::Request &req) override {
+  coro::async_generator<hs::Response> Handle(const hs::Request req) override {
     v4s::MJpegEncoder encoder;
     pipeline.Prepare(v4s::EncoderTraits<v4s::MJpegEncoder>::Codec);
     pipelineThread =
