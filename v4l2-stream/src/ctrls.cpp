@@ -61,7 +61,8 @@ struct SetCtrlReq {
 
 struct SetCtrlsHandler : public hs::Handler {
   coro::async_generator<hs::Response> Handle(const hs::Request req) override {
-    json body = json::parse(co_await req.Body());
+    std::string body_str = co_await req.Body();
+    json body = json::parse(body_str);
     SetCtrlReq set_ctrl_req = body;
     for (const auto &ctrl : set_ctrl_req.controls) {
       pipeline_.GetSource()->SetControl(ctrl.id, ctrl.val);

@@ -5,5 +5,5 @@ find_package(nlohmann_json REQUIRED)
 
 include(FetchContent)
 
-FetchContent_Declare(http-server GIT_REPOSITORY https://github.com/vvarma/http-server.git GIT_TAG fix/stream)
+FetchContent_Declare(http-server GIT_REPOSITORY https://github.com/vvarma/http-server.git GIT_TAG main)
 FetchContent_MakeAvailable(http-server)
