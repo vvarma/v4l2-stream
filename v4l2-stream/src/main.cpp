@@ -1,3 +1,5 @@
+#include <http-server/http-server.h>
+#include <http-server/static-routes.h>
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 
@@ -12,7 +14,6 @@
 #include <vector>
 
 #include "ctrls.h"
-#include "http-server/http-server.h"
 #include "pipeline/config.h"
 #include "pipeline/loader.h"
 #include "stream.h"
@@ -26,8 +27,9 @@ using namespace std::chrono_literals;
 struct Options {
   std::string pipeline_config;
   std::optional<spdlog::level::level_enum> log_level = spdlog::level::info;
+  std::optional<std::string> web_path;
 };
-STRUCTOPT(Options, pipeline_config, log_level);
+STRUCTOPT(Options, pipeline_config, log_level, web_path);
 
 int main(int argc, char *argv[]) {
   try {
@@ -46,6 +48,9 @@ int main(int argc, char *argv[]) {
     for (auto &route : CtrlRoutes(pipeline)) {
       server->AddRoute(route);
     }
+    if (options.web_path)
+      server->AddRoute(
+          std::make_shared<hs::StaticRoute>("/", options.web_path.value()));
 
     std::jthread t([&]() { coro::sync_wait(server->ServeAsync(io_context)); });
     std::this_thread::sleep_for(1s);
