@@ -105,7 +105,7 @@ class MMapFrame : public Frame {
 
 void MMapStream::DoStart() {
   spdlog::info("starting stream");
-  buffers = std::make_unique<internal::MMapBuffers>(device_, 4);
+  buffers = std::make_unique<internal::MMapBuffers>(device_, 20);
   for (int i = 0; i < buffers->NumBuffers(); ++i) {
     QueueBuffer(i);
   }
@@ -125,13 +125,18 @@ void MMapStream::DoStop() {
   buffers.reset();
 }
 
-MMapStream::MMapStream(CaptureDevice device) : Stream<MMapStream>(device) {}
+MMapStream::MMapStream(CaptureDevice device)
+    : Stream<MMapStream>(device),
+      counter_(Counter::GetCounter(
+          fmt::format("{}_cap", device.GetDevice()->DevNode()))) {}
+
 void MMapStream::QueueBuffer(int idx) {
   v4l2_buffer buffer = buffers->PrepareV4L2Buffer(idx);
   int ret = ioctl(device_.GetDevice()->fd(), VIDIOC_QBUF, &buffer);
   if (ret < 0) {
     throw Exception(fmt::format("Failed to q buf {}", strerror(errno)));
   }
+  counter_->Increment();
 }
 
 Frame::Ptr MMapStream::FetchNext() {
@@ -151,6 +156,7 @@ Frame::Ptr MMapStream::FetchNext() {
   if (ret < 0) {
     throw Exception(fmt::format("Failed to dq buf: {}", strerror(errno)));
   }
+  counter_->Decrement();
   if (buffer.flags & V4L2_BUF_FLAG_LAST) {
     spdlog::info("last buf");
   }

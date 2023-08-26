@@ -2,6 +2,7 @@
 #define V4L2_STREAM_V4L_BRIDGE_H
 #include <memory>
 
+#include "metrics/metrics.h"
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_output.h"
 namespace v4s {
@@ -9,7 +10,7 @@ namespace internal {
 struct BridgeBuffers;
 }
 class Bridge {
-public:
+ public:
   typedef std::shared_ptr<Bridge> Ptr;
   Bridge(CaptureDevice capture_device, OutputDevice output_device);
   bool Poll();
@@ -24,13 +25,14 @@ public:
   OutputDevice GetOutputDevice() const;
   ~Bridge();
 
-private:
+ private:
   void QueueBuffer(int idx);
 
   CaptureDevice capture_device_;
   OutputDevice output_device_;
+  Counter::Ptr cap_counter_, out_counter_;
   std::unique_ptr<internal::BridgeBuffers> buffers_;
 };
-} // namespace v4s
+}  // namespace v4s
 
-#endif // !V4L2_STREAM_V4L_BRIDGE_H
+#endif  // !V4L2_STREAM_V4L_BRIDGE_H

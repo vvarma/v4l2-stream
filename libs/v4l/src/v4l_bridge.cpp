@@ -1,5 +1,6 @@
 #include "v4l/v4l_bridge.h"
 
+#include <fmt/core.h>
 #include <linux/videodev2.h>
 #include <spdlog/spdlog.h>
 #include <sys/ioctl.h>
@@ -8,6 +9,7 @@
 #include <cstring>
 #include <vector>
 
+#include "metrics/metrics.h"
 #include "util.h"
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_exception.h"
@@ -36,7 +38,12 @@ class BridgeBuffers {
 }  // namespace internal
 
 Bridge::Bridge(CaptureDevice capture_device, OutputDevice output_device)
-    : capture_device_(capture_device), output_device_(output_device) {}
+    : capture_device_(capture_device),
+      output_device_(output_device),
+      cap_counter_(Counter::GetCounter(
+          fmt::format("{}_cap", capture_device.GetDevice()->DevNode()))),
+      out_counter_(Counter::GetCounter(
+          fmt::format("{}_out", output_device.GetDevice()->DevNode()))) {}
 
 void Bridge::Start() {
   auto output_device = output_device_.GetDevice();
@@ -51,7 +58,7 @@ void Bridge::Start() {
   }
 
   buffers_ = std::make_unique<internal::BridgeBuffers>(
-      capture_device, capture_device_.GetBufType(), 4);
+      capture_device, capture_device_.GetBufType(), 20);
   requestOutputDMABuffers(output_device, output_device_.GetBufType(),
                           buffers_->NumBufs());
   for (int i = 0; i < buffers_->NumBufs(); ++i) {
@@ -115,6 +122,7 @@ void Bridge::ProcessRead() {
   if (ret < 0) {
     throw Exception("Failed to dequeue buffer");
   }
+  cap_counter_->Decrement();
   std::vector<std::pair<int, int>> plane_info(buffers_->NumPlanes());
   if (cap_mplane) {
     for (int i = 0; i < buffers_->NumPlanes(); ++i) {
@@ -156,6 +164,7 @@ void Bridge::ProcessRead() {
     spdlog::error("Failed to queue buffer {}", strerror(errno));
     throw Exception("Failed to queue buffer");
   }
+  out_counter_->Increment();
 }
 
 void Bridge::ProcessWrite() {
@@ -183,6 +192,7 @@ void Bridge::ProcessWrite() {
     if (ret < 0) {
       throw Exception("Failed to dequeue buffer");
     }
+    out_counter_->Decrement();
     bufIdx = buffer.index;
   }
   QueueBuffer(bufIdx);
@@ -213,6 +223,7 @@ void Bridge::QueueBuffer(int idx) {
   if (ret < 0) {
     throw Exception("Failed to queue buffer");
   }
+  cap_counter_->Increment();
 }
 Bridge::~Bridge() {}
 
