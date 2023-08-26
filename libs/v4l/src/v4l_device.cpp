@@ -70,8 +70,11 @@ Capabilities getCapabilities(int fd) {
   };
 }
 
-Device::Device(int fd, Capabilities capabilities)
-    : fd_(fd), capabilities_(capabilities), controls_(QueryControls(fd_)) {}
+Device::Device(const std::string &devnode, int fd, Capabilities capabilities)
+    : fd_(fd),
+      devnode_(devnode),
+      capabilities_(capabilities),
+      controls_(QueryControls(fd_)) {}
 
 Device::Ptr Device::from_devnode(const std::string &path) {
   int fd = open(path.c_str(), O_RDWR);
@@ -80,12 +83,13 @@ Device::Ptr Device::from_devnode(const std::string &path) {
         fmt::format("Error opening device: {} err: {}", path, strerror(errno)));
   }
 
-  return std::make_shared<Device>(fd, getCapabilities(fd));
+  return std::make_shared<Device>(path, fd, getCapabilities(fd));
 }
 
 Device::~Device() { close(fd_); }
 
 int Device::fd() const { return fd_; }
+std::string_view Device::DevNode() const { return devnode_; }
 
 Capabilities Device::GetCapabilities() const { return capabilities_; }
 

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "ctrls.h"
+#include "metrics.h"
 #include "pipeline/config.h"
 #include "pipeline/loader.h"
 #include "stream.h"
@@ -48,6 +49,7 @@ int main(int argc, char *argv[]) {
     for (auto &route : CtrlRoutes(pipeline)) {
       server->AddRoute(route);
     }
+    server->AddRoute(MetricsRoute());
     if (options.web_path)
       server->AddRoute(
           std::make_shared<hs::StaticRoute>("/", options.web_path.value()));

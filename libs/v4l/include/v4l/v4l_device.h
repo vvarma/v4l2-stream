@@ -22,16 +22,18 @@ class OutputDevice;
 
 class Device : public std::enable_shared_from_this<Device> {
   int fd_;
+  std::string devnode_;
   Capabilities capabilities_;
   std::vector<Control::Ptr> controls_;
 
  public:
   typedef std::shared_ptr<Device> Ptr;
 
-  Device(int fd, Capabilities Capabilities);
+  Device(const std::string &devnode, int fd, Capabilities Capabilities);
   ~Device();
 
   int fd() const;
+  std::string_view DevNode() const;
 
   static Device::Ptr from_devnode(const std::string &path);
 

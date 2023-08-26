@@ -19,7 +19,7 @@
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_stream.h"
-
+namespace {
 struct Handler : public hs::Handler {
   coro::async_generator<hs::Response> Handle(const hs::Request req) override {
     v4s::MJpegEncoder encoder;
@@ -39,7 +39,6 @@ struct Handler : public hs::Handler {
           co_yield std::make_shared<hs::WritableResponseBody<v4s::EncodedPart>>(
               frame);
         }
-        auto frame = encoder.EncodeFrame(pipeline.Next());
       }
       spdlog::info("finished streaming");
     } catch (std::exception &e) {
@@ -66,6 +65,8 @@ struct Route : public hs::Route {
 
   v4s::Pipeline pipeline;
 };
+}  // namespace
+
 hs::Route::Ptr StreamRoutes(v4s::Pipeline pipeline) {
-  return std::make_shared<Route>(pipeline);
+  return std::make_shared<::Route>(pipeline);
 }

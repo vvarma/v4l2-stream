@@ -1,14 +1,14 @@
 #include "util.h"
 
-#include <cstdint>
-#include <cstring>
+#include <fmt/format.h>
 #include <linux/videodev2.h>
-#include <sstream>
+#include <spdlog/spdlog.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-#include <fmt/format.h>
-#include <spdlog/spdlog.h>
+#include <cstdint>
+#include <cstring>
+#include <sstream>
 
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_exception.h"
@@ -40,14 +40,15 @@ uint32_t getNumPlanes(int fd, v4s::BufType bufType) {
   return fmt.fmt.pix_mp.num_planes;
 }
 
-std::vector<std::vector<v4l2_plane>>
-allocatePlanes(v4s::Device::Ptr device, v4s::BufType buf_type, int num_bufs) {
-  int num_buffers = requestBuffers(device->fd(), buf_type, 4);
+std::vector<std::vector<v4l2_plane>> allocatePlanes(v4s::Device::Ptr device,
+                                                    v4s::BufType buf_type,
+                                                    int num_bufs) {
+  int num_buffers = requestBuffers(device->fd(), buf_type, num_bufs);
   uint32_t num_planes = getNumPlanes(device->fd(), buf_type);
   std::vector<std::vector<v4l2_plane>> planes;
   for (int i = 0; i < num_buffers; ++i) {
     std::vector<v4l2_plane> buf_planes;
-    for (int j = 0; j < num_planes; ++j) {
+    for (uint32_t j = 0; j < num_planes; ++j) {
       v4l2_plane plane;
       memset(&plane, 0, sizeof(v4l2_plane));
       buf_planes.push_back(plane);
