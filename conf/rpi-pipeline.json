@@ -1,7 +1,15 @@
 {
-  "devices": [
-    "/dev/video0",
-    "/dev/video12",
-    "/dev/video11"
-  ]
+  "bridges": [
+    {
+      "source": "/dev/video0",
+      "sink": "/dev/video13"
+    },
+    {
+      "source": "/dev/video14",
+      "sink": "/dev/video11"
+    }
+  ],
+  "source": {
+    "source": "/dev/video11"
+  }
 }

@@ -1,4 +1,5 @@
 #include "pipeline/pipeline.h"
+
 #include <spdlog/spdlog.h>
 
 #include <chrono>
@@ -14,7 +15,12 @@ int main() {
   auto pipeline =
       v4s::PipelineLoader(
           v4s::PipelineConfig{
-              .devices = {"/dev/video0", "/dev/video12", "/dev/video11"}})
+              .bridges = {v4s::BridgeConfig{.source = "/dev/video0",
+                                            .sink = "/dev/video12"},
+                          v4s::BridgeConfig{.source = "/dev/video12",
+                                            .sink = "/dev/video11"}},
+              .source = {.source = "/dev/video11"},
+          })
           .Load();
   std::jthread pipeline_thread(
       [&](std::stop_token stop_token) { pipeline.Start(stop_token); });

@@ -1,6 +1,4 @@
-#ifndef V4L2_STREAM_PIPELINE_H
-#define V4L2_STREAM_PIPELINE_H
-
+#pragma once
 #include <memory>
 #include <stop_token>
 
@@ -24,5 +22,3 @@ class Pipeline {
   std::shared_ptr<internal::PipelineImpl> pimpl_;
 };
 }  // namespace v4s
-
-#endif  // !V4L2_STREAM_PIPELINE_H

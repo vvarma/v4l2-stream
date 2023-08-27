@@ -1,16 +1,18 @@
 #include "pipeline/config.h"
 
 #include <fstream>
-
+#include <nlohmann/detail/macro_scope.hpp>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 using namespace nlohmann::literals;
 
 namespace v4s {
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PipelineConfig, devices)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BridgeConfig, source, sink);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SourceConfig, source);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PipelineConfig, bridges, source)
 
 PipelineConfig PipelineConfig::FromFile(const std::string &path) {
   std::ifstream f(path);
   return nlohmann::json::parse(f).get<PipelineConfig>();
 }
-} // namespace v4s
+}  // namespace v4s
