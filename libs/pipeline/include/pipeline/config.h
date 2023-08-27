@@ -1,14 +1,17 @@
-#ifndef V4L2_STREAM_PIPELINE_CONFIG_H
-#define V4L2_STREAM_PIPELINE_CONFIG_H
-
+#pragma once
 #include <string>
 #include <vector>
 namespace v4s {
+struct BridgeConfig {
+  std::string source, sink;
+};
+struct SourceConfig {
+  std::string source;
+};
 struct PipelineConfig {
-  std::vector<std::string> devices;
+  std::vector<BridgeConfig> bridges;
+  SourceConfig source;
   static PipelineConfig FromFile(const std::string &path);
 };
 
-}
-
-#endif // !V4L2_STREAM_PIPELINE_CONFIG_H
+}  // namespace v4s

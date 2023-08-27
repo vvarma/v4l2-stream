@@ -1,5 +1,3 @@
 {
-  "devices": [
-    "/dev/video0"
-  ]
+  "source": "/dev/video0"
 }

@@ -1,7 +1,8 @@
-#ifndef V4L2_STREAM_PIPELINE_LOADER_H
-#define V4L2_STREAM_PIPELINE_LOADER_H
+#pragma once
 
 #include <memory>
+#include <string_view>
+#include <unordered_map>
 
 #include "pipeline/config.h"
 #include "pipeline/pipeline.h"
@@ -14,8 +15,7 @@ class PipelineLoader {
   Pipeline Load() const;
 
  private:
-  std::vector<Device::Ptr> devices_;
+  PipelineConfig config_;
+  std::unordered_map<std::string, Device::Ptr> devices_;
 };
 }  // namespace v4s
-
-#endif  // !#ifndef V4L2_STREAM_PIPELINE_LOADER_H
