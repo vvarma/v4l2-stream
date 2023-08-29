@@ -1,6 +1,13 @@
-async function fetchControls() {
+
+async function fetchPipeline() {
+  const response = await fetch('/pipeline');
+  const data = await response.json();
+  return data;
+}
+
+async function fetchControls(stage) {
     try {
-        const response = await fetch('/ctrls');
+        const response = await fetch(`/ctrls?dev_node=${stage.dev_node}`);
         const data = await response.json();
         return data; 
     } catch (error) {
@@ -9,7 +16,13 @@ async function fetchControls() {
     }
 }
 
-function createSlider(control) {
+function wrapP (element){
+  const p = document.createElement("p");
+  p.appendChild(element);
+  return p;
+}
+
+function createSlider(control, dev_node) {
     const sliderContainer = document.createElement('div');
     sliderContainer.className = 'slider-container';
 
@@ -28,6 +41,7 @@ function createSlider(control) {
                 'Content-Type': 'application/json'
             },
           body: JSON.stringify({
+            dev_node: dev_node,
             controls:[
               {
                 id: control.id,
@@ -41,15 +55,15 @@ function createSlider(control) {
     const label = document.createElement('label');
     label.textContent = control.name;
 
-    sliderContainer.appendChild(label);
-    sliderContainer.appendChild(slider);
+    sliderContainer.appendChild(wrapP(label));
+    sliderContainer.appendChild(wrapP(slider));
 
     return sliderContainer;
 }
 
 async function startStream() {
     const imgElement = document.getElementById('stream-image');
-    imgElement.src = 'http://localhost:4891/stream';
+    imgElement.src = '/stream';
 }
 
 function stopStream() {
@@ -63,16 +77,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     startButton.addEventListener('click', startStream);
     stopButton.addEventListener('click', stopStream);
-    fetchControls().then(controls => {
-        const controlsContainer = document.querySelector('.controls');
 
-        controls.forEach(control => {
-      console.log(control);
-            //if (control.type === 'int') {
-                const slider = createSlider(control);
-                controlsContainer.appendChild(slider);
-            //}
+    const sidenav = document.querySelector('.sidenav');
+  
+    fetchPipeline().then(pipeline => {
+      pipeline.stages.forEach(stage => {
+        console.log(stage);
+        const stageDiv = document.createElement("div");
+        stageDiv.className = "stage";
+        const stageName = document.createElement("b");
+        const newtext = document.createTextNode(stage.dev_node);
+        stageName.appendChild(newtext);
+        stageDiv.appendChild(stageName);
+        sidenav.appendChild(stageDiv);
+      
+        fetchControls(stage).then(controls => {
+          controls.forEach(control => {
+            console.log(control);
+            const slider = createSlider(control, stage.dev_node);
+            stageDiv.appendChild(slider);
         });
+      });
     });
+  });
 });
 

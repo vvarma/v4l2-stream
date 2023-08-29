@@ -1,3 +1,6 @@
 {
-  "source": "/dev/video0"
+  "bridges": [],
+  "source": {
+    "source": "/dev/video0"
+  }
 }

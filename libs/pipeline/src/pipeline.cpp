@@ -6,6 +6,7 @@
 #include <sys/poll.h>
 
 #include <cstring>
+#include <optional>
 #include <stop_token>
 #include <type_traits>
 #include <unordered_map>
@@ -16,23 +17,50 @@
 
 namespace v4s {
 namespace internal {
-BridgeIO::BridgeIO(Bridge::Ptr bridge) : bridge_(bridge) {}
-void BridgeIO::Start() { bridge_->Start(); }
 
 PipelineImpl::PipelineImpl(MMapStream::Ptr sink,
                            std::vector<Bridge::Ptr> bridges)
-    : sink_(sink), bridges_(bridges) {
-  for (auto bridge : bridges) {
-    ios_.push_back(std::make_unique<BridgeIO>(bridge));
-  }
-}
+    : sink_(sink), bridges_(bridges) {}
 v4s::Frame::Ptr PipelineImpl::Next() { return sink_->Next(); }
 
-Device::Ptr PipelineImpl::GetSource() const {
-  if (bridges_.empty()) {
-    return sink_->GetDevice().GetDevice();
+std::optional<Device::Ptr> PipelineImpl::GetDevice(
+    std::string_view dev_node) const {
+  for (const auto &bridge : bridges_) {
+    auto cap_device = bridge->GetCaptureDevice();
+    if (cap_device.GetDevice()->DevNode() == dev_node) {
+      return cap_device.GetDevice();
+    }
+    auto out_device = bridge->GetOutputDevice();
+    if (out_device.GetDevice()->DevNode() == dev_node) {
+      return out_device.GetDevice();
+    }
   }
-  return bridges_[0]->GetCaptureDevice().GetDevice();
+  if (sink_->GetDevice()->DevNode() == dev_node) {
+    return sink_->GetDevice();
+  }
+  return std::nullopt;
+}
+
+PipelineDesc PipelineImpl::GetDesc() const {
+  PipelineDesc desc;
+  for (const auto &bridge : bridges_) {
+    desc.stages.push_back(Stage{
+        .role = SOURCE,
+        .dev_node =
+            std::string(bridge->GetCaptureDevice().GetDevice()->DevNode()),
+    });
+    desc.stages.push_back(Stage{
+        .role = SINK,
+        .dev_node =
+            std::string(bridge->GetOutputDevice().GetDevice()->DevNode()),
+    });
+  }
+  desc.stages.push_back(Stage{
+      .role = SOURCE,
+      .dev_node = std::string(sink_->GetDevice()->DevNode()),
+  });
+
+  return desc;
 }
 
 void PipelineImpl::Start(std::stop_token stop_token) {
@@ -145,7 +173,7 @@ void PipelineImpl::Prepare(std::string sink_codec) {
   if (last_fmt) {
     auto fmt = last_fmt.value();
     fmt.codec = sink_codec;
-    auto updated_fmt = sink_->GetDevice().SetFormat(fmt);
+    auto updated_fmt = sink_->GetDevice()->SetFormat(sink_->GetBufType(), fmt);
     if (fmt != updated_fmt) {
       spdlog::error("Failed to set format: exp {} obs {}", fmt, updated_fmt);
       throw Exception("Failed to set format");
@@ -166,7 +194,11 @@ void Pipeline::Start(std::stop_token stop_token) {
   pimpl_->Start(stop_token);
 }
 
-Device::Ptr Pipeline::GetSource() const { return pimpl_->GetSource(); }
+std::optional<Device::Ptr> Pipeline::GetDevice(
+    std::string_view dev_node) const {
+  return pimpl_->GetDevice(dev_node);
+}
+PipelineDesc Pipeline::GetDesc() const { return pimpl_->GetDesc(); }
 
 v4s::Frame::Ptr Pipeline::Next() { return pimpl_->Next(); }
 
