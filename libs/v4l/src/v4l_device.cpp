@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 
+#include "util.h"
 #include "v4l/v4l_caps.h"
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_controls.h"
@@ -90,6 +91,13 @@ Device::~Device() { close(fd_); }
 
 int Device::fd() const { return fd_; }
 std::string_view Device::DevNode() const { return devnode_; }
+
+Format Device::GetFormat(BufType buf_type) {
+  return getFormat(shared_from_this(), buf_type);
+}
+Format Device::SetFormat(BufType buf_type, Format format) {
+  return setFormat(shared_from_this(), buf_type, format);
+}
 
 Capabilities Device::GetCapabilities() const { return capabilities_; }
 

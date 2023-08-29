@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "v4l/v4l_controls.h"
+#include "v4l/v4l_framesize.h"
 #include "v4l_caps.h"
 
 namespace v4s {
@@ -15,7 +16,8 @@ enum BufType {
   BUF_VIDEO_CAPTURE = 1,
   BUF_VIDEO_OUTPUT = 2,
   BUF_VIDEO_CAPTURE_MPLANE = 9,
-  BUF_VIDEO_OUTPUT_MPLANE = 10
+  BUF_VIDEO_OUTPUT_MPLANE = 10,
+  BUF_META_CAPTURE = 13,
 };
 class CaptureDevice;
 class OutputDevice;
@@ -36,6 +38,10 @@ class Device : public std::enable_shared_from_this<Device> {
   std::string_view DevNode() const;
 
   static Device::Ptr from_devnode(const std::string &path);
+
+  Format GetFormat(BufType buf_type);
+
+  Format SetFormat(BufType buf_type, Format format);
 
   Capabilities GetCapabilities() const;
   std::optional<CaptureDevice> TryCapture();

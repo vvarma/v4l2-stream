@@ -38,12 +38,12 @@ std::vector<std::vector<internal::Buffer::Ptr>> mapBuffers(
 
 class MMapBuffers {
  public:
-  MMapBuffers(CaptureDevice device, int num_bufs)
-      : buf_type_(device.GetBufType()),
-        num_planes_(getNumPlanes(device.GetDevice()->fd(), buf_type_)),
-        planes_(allocatePlanes(device.GetDevice(), buf_type_, num_bufs)),
-        buffers_(mapBuffers(device.GetDevice(), buf_type_, planes_)),
-        device_(device.GetDevice()) {}
+  MMapBuffers(Device::Ptr device, BufType buf_type, int num_bufs)
+      : buf_type_(buf_type),
+        num_planes_(getNumPlanes(device->fd(), buf_type_)),
+        planes_(allocatePlanes(device, buf_type_, num_bufs)),
+        buffers_(mapBuffers(device, buf_type_, planes_)),
+        device_(device) {}
 
   v4l2_buffer PrepareV4L2Buffer(int idx) {
     v4l2_buffer v4l2_buffer;
@@ -105,22 +105,20 @@ class MMapFrame : public Frame {
 
 void MMapStream::DoStart() {
   spdlog::info("starting stream");
-  buffers = std::make_unique<internal::MMapBuffers>(device_, 20);
+  buffers = std::make_unique<internal::MMapBuffers>(device_, buf_type_, 20);
   for (int i = 0; i < buffers->NumBuffers(); ++i) {
     QueueBuffer(i);
   }
-  int bufType = device_.GetBufType();
-  int ret = ioctl(device_.GetDevice()->fd(), VIDIOC_STREAMON, &bufType);
+  int ret = ioctl(device_->fd(), VIDIOC_STREAMON, &buf_type_);
   if (ret < 0)
     throw Exception(fmt::format("Failed to start stream: {}", strerror(errno)));
 }
 void MMapStream::DoStop() {
   spdlog::info("stopping stream");
-  int bufType = device_.GetBufType();
-  int ret = ioctl(device_.GetDevice()->fd(), VIDIOC_STREAMOFF, &bufType);
+  int ret = ioctl(device_->fd(), VIDIOC_STREAMOFF, &buf_type_);
   if (ret < 0)
     throw Exception(fmt::format("Failed to stop stream: {}", strerror(errno)));
-  requestBuffers(device_.GetDevice()->fd(), device_.GetBufType(), 0);
+  requestBuffers(device_->fd(), buf_type_, 0);
   // todo lock
   buffers.reset();
 }
@@ -132,7 +130,7 @@ MMapStream::MMapStream(CaptureDevice device)
 
 void MMapStream::QueueBuffer(int idx) {
   v4l2_buffer buffer = buffers->PrepareV4L2Buffer(idx);
-  int ret = ioctl(device_.GetDevice()->fd(), VIDIOC_QBUF, &buffer);
+  int ret = ioctl(device_->fd(), VIDIOC_QBUF, &buffer);
   if (ret < 0) {
     throw Exception(fmt::format("Failed to q buf {}", strerror(errno)));
   }
@@ -142,17 +140,17 @@ void MMapStream::QueueBuffer(int idx) {
 Frame::Ptr MMapStream::FetchNext() {
   v4l2_buffer buffer;
   memset(&buffer, 0, sizeof(v4l2_buffer));
-  buffer.type = device_.GetBufType();
+  buffer.type = buf_type_;
   buffer.memory = V4L2_MEMORY_MMAP;
   std::vector<v4l2_plane> planes(buffers->NumPlanes());
   for (uint32_t i = 0; i < buffers->NumPlanes(); ++i) {
     memset(&planes[i], 0, sizeof(v4l2_plane));
   }
-  if (device_.GetDevice()->GetCapabilities().IsMPlane()) {
+  if (device_->GetCapabilities().IsMPlane()) {
     buffer.m.planes = planes.data();
     buffer.length = planes.size();
   }
-  int ret = ioctl(device_.GetDevice()->fd(), VIDIOC_DQBUF, &buffer);
+  int ret = ioctl(device_->fd(), VIDIOC_DQBUF, &buffer);
   if (ret < 0) {
     throw Exception(fmt::format("Failed to dq buf: {}", strerror(errno)));
   }
@@ -164,7 +162,7 @@ Frame::Ptr MMapStream::FetchNext() {
 
   auto next = buffer.index;
   std::vector<uint32_t> bytes_used;
-  if (device_.GetDevice()->GetCapabilities().IsMPlane()) {
+  if (device_->GetCapabilities().IsMPlane()) {
     for (const auto &plane : buffers->GetPlanes(next)) {
       bytes_used.push_back(plane.bytesused);
     }

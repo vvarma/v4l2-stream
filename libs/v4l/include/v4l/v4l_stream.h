@@ -8,20 +8,31 @@
 #include <optional>
 #include <vector>
 
-#include "v4l/v4l_capture.h"
-#include "v4l/v4l_frame.h"
 #include "metrics/metrics.h"
+#include "v4l/v4l_capture.h"
+#include "v4l/v4l_device.h"
+#include "v4l/v4l_frame.h"
+#include "v4l/v4l_meta_cap.h"
 namespace v4s {
 
 template <typename T>
 class Stream : public std::enable_shared_from_this<T> {
+ protected:
+  Device::Ptr device_;
+  BufType buf_type_;
+
+ private:
   std::atomic_bool started_;
 
- protected:
-  CaptureDevice device_;
-
  public:
-  Stream(CaptureDevice device) : device_(device), started_(false) {}
+  Stream(CaptureDevice device)
+      : device_(device.GetDevice()),
+        buf_type_(device.GetBufType()),
+        started_(false) {}
+  Stream(MetaCaptureDevice device)
+      : device_(device.GetDevice()),
+        buf_type_(device.GetBufType()),
+        started_(false) {}
   void Start() {
     (static_cast<T *>(this))->DoStart();
     started_ = true;
@@ -30,7 +41,8 @@ class Stream : public std::enable_shared_from_this<T> {
     if (started_) (static_cast<T *>(this))->DoStop();
     started_ = false;
   }
-  CaptureDevice GetDevice() const { return device_; }
+  Device::Ptr GetDevice() const { return device_; }
+  BufType GetBufType() const { return buf_type_; }
 
   Frame::Ptr Next() {
     if (!started_) Start();
@@ -50,7 +62,7 @@ class MMapStream : public Stream<MMapStream> {
   typedef std::shared_ptr<MMapStream> Ptr;
   void QueueBuffer(int idx);
   MMapStream(CaptureDevice device);
-  bool Poll();
+  MMapStream(MetaCaptureDevice device);
   void DoStart();
   void DoStop();
   Frame::Ptr FetchNext();
