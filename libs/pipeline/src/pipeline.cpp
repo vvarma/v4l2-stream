@@ -147,11 +147,7 @@ void PipelineImpl::Start(std::stop_token stop_token) {
   }
 }
 void PipelineImpl::Prepare(std::string sink_codec) {
-  std::optional<Format> last_fmt = Format{
-      .codec = "RGGB",
-      .height = 480,
-      .width = 640,
-  };
+  std::optional<Format> last_fmt;
   for (const auto &bridge : bridges_) {
     if (last_fmt) {
       auto fmt = last_fmt.value();
