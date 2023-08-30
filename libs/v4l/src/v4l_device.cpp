@@ -3,6 +3,7 @@
 #include <asm-generic/errno-base.h>
 #include <fcntl.h>
 #include <fmt/format.h>
+#include <linux/v4l2-common.h>
 #include <linux/videodev2.h>
 #include <spdlog/spdlog.h>
 #include <sys/ioctl.h>
@@ -97,6 +98,47 @@ Format Device::GetFormat(BufType buf_type) {
 }
 Format Device::SetFormat(BufType buf_type, Format format) {
   return setFormat(shared_from_this(), buf_type, format);
+}
+
+void Device::SetSelection(BufType buf_type, SelectionTarget target, Rect rect) {
+  if (buf_type == BUF_META_CAPTURE) {
+    throw Exception("Meta capture does not support selection");
+  }
+  v4l2_selection sel{};
+  if (buf_type == BUF_VIDEO_CAPTURE_MPLANE || buf_type == BUF_VIDEO_CAPTURE) {
+    sel.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  } else {
+    sel.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+  }
+  sel.target = target;
+  sel.r.left = rect.x;
+  sel.r.top = rect.y;
+  sel.r.width = rect.w;
+  sel.r.height = rect.h;
+  int ret = ioctl(fd_, VIDIOC_S_SELECTION, &sel);
+  if (ret < 0) {
+    throw Exception(
+        fmt::format("Error setting selection: {}", strerror(errno)));
+  }
+}
+
+Rect Device::GetSelection(BufType buf_type, SelectionTarget target) {
+  if (buf_type == BUF_META_CAPTURE) {
+    throw Exception("Meta capture does not support selection");
+  }
+  v4l2_selection sel{};
+  if (buf_type == BUF_VIDEO_CAPTURE_MPLANE || buf_type == BUF_VIDEO_CAPTURE) {
+    sel.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  } else {
+    sel.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+  }
+  sel.target = target;
+  int ret = ioctl(fd_, VIDIOC_G_SELECTION, &sel);
+  if (ret < 0) {
+    throw Exception(
+        fmt::format("Error getting selection: {}", strerror(errno)));
+  }
+  return Rect{sel.r.left, sel.r.top, sel.r.width, sel.r.height};
 }
 
 Capabilities Device::GetCapabilities() const { return capabilities_; }
