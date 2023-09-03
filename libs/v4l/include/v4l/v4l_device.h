@@ -32,6 +32,7 @@ enum SelectionTarget {
 
 class CaptureDevice;
 class OutputDevice;
+class MetaCaptureDevice;
 
 class Device : public std::enable_shared_from_this<Device> {
   int fd_;
@@ -61,6 +62,7 @@ class Device : public std::enable_shared_from_this<Device> {
   Capabilities GetCapabilities() const;
   std::optional<CaptureDevice> TryCapture();
   std::optional<OutputDevice> TryOutput();
+  std::optional<MetaCaptureDevice> TryMetaCapture();
 
   std::vector<Control::Ptr> GetControls();
   void SetControl(uint32_t id, int64_t val);

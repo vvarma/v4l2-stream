@@ -19,6 +19,7 @@
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_exception.h"
 #include "v4l/v4l_frame.h"
+#include "v4l/v4l_meta_cap.h"
 
 namespace v4s {
 
@@ -103,9 +104,10 @@ class MMapFrame : public Frame {
   uint32_t NumPlanes() const override { return buffers_.size(); }
 };
 
+int MMapStream::GetFd() const { return device_->fd(); }
 void MMapStream::DoStart() {
   spdlog::info("starting stream");
-  buffers = std::make_unique<internal::MMapBuffers>(device_, buf_type_, 20);
+  buffers = std::make_unique<internal::MMapBuffers>(device_, buf_type_, 5);
   for (int i = 0; i < buffers->NumBuffers(); ++i) {
     QueueBuffer(i);
   }
@@ -127,6 +129,11 @@ MMapStream::MMapStream(CaptureDevice device)
     : Stream<MMapStream>(device),
       counter_(Counter::GetCounter(
           fmt::format("{}_cap", device.GetDevice()->DevNode()))) {}
+
+MMapStream::MMapStream(MetaCaptureDevice device)
+    : Stream<MMapStream>(device),
+      counter_(Counter::GetCounter(
+          fmt::format("{}_mcap", device.GetDevice()->DevNode()))) {}
 
 void MMapStream::QueueBuffer(int idx) {
   v4l2_buffer buffer = buffers->PrepareV4L2Buffer(idx);
@@ -191,7 +198,7 @@ std::vector<std::vector<internal::Buffer::Ptr>> internal::mapBuffers(
     const std::vector<std::vector<v4l2_plane>> &planes) {
   bool mplane = device->GetCapabilities().IsMPlane();
   std::vector<std::vector<internal::Buffer::Ptr>> buffers;
-  for (int bufIdx = 0; bufIdx < planes.size(); ++bufIdx) {
+  for (size_t bufIdx = 0; bufIdx < planes.size(); ++bufIdx) {
     std::vector<internal::Buffer::Ptr> plane_buffers;
     std::vector<v4l2_plane> buf_planes = planes[bufIdx];
     v4l2_buffer buffer;
@@ -208,7 +215,7 @@ std::vector<std::vector<internal::Buffer::Ptr>> internal::mapBuffers(
       throw Exception(fmt::format("failed to query buf: {}", strerror(errno)));
     }
     if (mplane) {
-      for (int planeIdx = 0; planeIdx < buf_planes.size(); ++planeIdx) {
+      for (size_t planeIdx = 0; planeIdx < buf_planes.size(); ++planeIdx) {
         plane_buffers.push_back(std::make_unique<internal::Buffer>(
             device->fd(), buf_planes[planeIdx].m.mem_offset,
             buf_planes[planeIdx].length));

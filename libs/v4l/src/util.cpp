@@ -97,9 +97,13 @@ v4s::Format setFormat(v4s::Device::Ptr device, v4s::BufType buf_type,
   v4l2_format fmt;
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = buf_type;
-  fmt.fmt.pix.width = format.width;
-  fmt.fmt.pix.height = format.height;
-  fmt.fmt.pix.pixelformat = ToFourcc(format.codec);
+  if (buf_type == v4s::BUF_META_CAPTURE) {
+    fmt.fmt.meta.dataformat = ToFourcc(format.codec);
+  } else {
+    fmt.fmt.pix.width = format.width;
+    fmt.fmt.pix.height = format.height;
+    fmt.fmt.pix.pixelformat = ToFourcc(format.codec);
+  }
   int ret = ioctl(device->fd(), VIDIOC_S_FMT, &fmt);
   if (ret < 0) {
     spdlog::error("Failed to set format {}:{}", format, strerror(errno));

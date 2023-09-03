@@ -14,13 +14,15 @@
 #include <vector>
 
 #include "pipeline_impl.h"
+#include "v4l/v4l_device.h"
 
 namespace v4s {
 namespace internal {
 
 PipelineImpl::PipelineImpl(MMapStream::Ptr sink,
-                           std::vector<Bridge::Ptr> bridges)
-    : sink_(sink), bridges_(bridges) {}
+                           std::vector<Bridge::Ptr> bridges,
+                           std::vector<PipelineControl::Ptr> controls)
+    : sink_(sink), bridges_(bridges), controls_(controls) {}
 v4s::Frame::Ptr PipelineImpl::Next() { return sink_->Next(); }
 
 std::optional<Device::Ptr> PipelineImpl::GetDevice(
@@ -75,6 +77,12 @@ void PipelineImpl::Start(std::stop_token stop_token) {
     all_fds.insert(bridge->ReadFd());
     all_fds.insert(bridge->WriteFd());
   }
+
+  for (const auto &control : controls_) {
+    read_callbacks[control->GetFd()] = [control]() { control->ProcessStats(); };
+    all_fds.insert(control->GetFd());
+  }
+
   for (auto fd : all_fds) {
     pollfd pfd;
     memset(&pfd, 0, sizeof(pfd));
@@ -105,6 +113,9 @@ void PipelineImpl::Start(std::stop_token stop_token) {
   }
   for (auto &bridge : bridges_) {
     bridge->Start();
+  }
+  for (auto &control : controls_) {
+    control->Start();
   }
   while (!stop_token.stop_requested()) {
     int ready = poll(fds.data(), fds.size(), 100);
@@ -146,6 +157,20 @@ void PipelineImpl::Start(std::stop_token stop_token) {
     bridge->Stop();
   }
 }
+
+void PipelineImpl::FeedbackLoop() const {
+  std::vector<pollfd> fds;
+  typedef std::function<void()> callback;
+  std::unordered_map<int, callback> read_callbacks;
+  for (auto ctrl : controls_) {
+    pollfd pfd;
+    memset(&pfd, 0, sizeof(pfd));
+    pfd.fd = ctrl->GetFd();
+    pfd.events = POLLIN;
+    fds.push_back(pfd);
+  }
+}
+
 void PipelineImpl::Prepare(std::string sink_codec) {
   std::optional<Format> last_fmt;
   for (const auto &bridge : bridges_) {
@@ -175,8 +200,14 @@ void PipelineImpl::Prepare(std::string sink_codec) {
       throw Exception("Failed to set format");
     }
   }
+  for (auto &ctrl : controls_) {
+    ctrl->GetSource()->SetFormat(BUF_META_CAPTURE, Format{
+                                                       .codec = "BSTA",
+                                                   });
+  }
   spdlog::info("Finished configuring devices");
 }
+
 PipelineImpl::~PipelineImpl() { spdlog::info("Cleaning up pipeline"); }
 }  // namespace internal
 

@@ -10,21 +10,26 @@
 namespace v4s {
 
 enum Role { SOURCE, SINK, STATS };
+
 NLOHMANN_JSON_SERIALIZE_ENUM(Role, {{SOURCE, "source"},
                                     {SINK, "sink"},
                                     {STATS, "stats"}});
+
 struct Stage {
   Role role;
   std::string dev_node;
   NLOHMANN_DEFINE_TYPE_INTRUSIVE(Stage, role, dev_node);
 };
+
 struct PipelineDesc {
   std::vector<Stage> stages;
   NLOHMANN_DEFINE_TYPE_INTRUSIVE(PipelineDesc, stages);
 };
+
 namespace internal {
 class PipelineImpl;
 }  // namespace internal
+
 class Pipeline {
  public:
   v4s::Frame::Ptr Next();
@@ -38,4 +43,5 @@ class Pipeline {
  private:
   std::shared_ptr<internal::PipelineImpl> pimpl_;
 };
+
 }  // namespace v4s
