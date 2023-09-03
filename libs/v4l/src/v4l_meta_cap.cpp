@@ -8,7 +8,7 @@ MetaCaptureDevice::MetaCaptureDevice(std::shared_ptr<Device> device)
 
 BufType MetaCaptureDevice::GetBufType() const {
   auto capabilities = device_->GetCapabilities();
-  assert((capabilities.caps & CAP_META_CAPTURE).any() &&
+  assert((capabilities.caps & std::bitset<32>(CAP_META_CAPTURE)).any() &&
          "device doesnt support meta capture");
   return BUF_META_CAPTURE;
 }

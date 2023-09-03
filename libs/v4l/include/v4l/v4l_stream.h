@@ -63,6 +63,7 @@ class MMapStream : public Stream<MMapStream> {
   void QueueBuffer(int idx);
   MMapStream(CaptureDevice device);
   MMapStream(MetaCaptureDevice device);
+  int GetFd() const;
   void DoStart();
   void DoStop();
   Frame::Ptr FetchNext();

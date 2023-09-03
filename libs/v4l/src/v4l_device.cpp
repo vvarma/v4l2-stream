@@ -21,6 +21,7 @@
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_controls.h"
 #include "v4l/v4l_exception.h"
+#include "v4l/v4l_meta_cap.h"
 #include "v4l/v4l_output.h"
 
 std::vector<v4s::Control::Ptr> QueryControls(int fd) {
@@ -157,6 +158,14 @@ std::optional<OutputDevice> Device::TryOutput() {
     return std::nullopt;
   }
   return OutputDevice(shared_from_this());
+}
+
+std::optional<MetaCaptureDevice> Device::TryMetaCapture() {
+  Capabilities caps = GetCapabilities();
+  if (!(caps.caps & std::bitset<32>(Capability::CAP_META_CAPTURE)).any()) {
+    return std::nullopt;
+  }
+  return MetaCaptureDevice(shared_from_this());
 }
 
 std::vector<Control::Ptr> Device::GetControls() {
