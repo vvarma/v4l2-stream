@@ -14,6 +14,7 @@ void PipelineControl::ProcessStats() {
 }
 
 void PipelineControl::Start() { stats_source_->Start(); }
+void PipelineControl::Stop() { stats_source_->Stop(); }
 
 Device::Ptr PipelineControl::GetSource() const {
   return stats_source_->GetDevice();

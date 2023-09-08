@@ -156,6 +156,9 @@ void PipelineImpl::Start(std::stop_token stop_token) {
   for (auto &bridge : bridges_) {
     bridge->Stop();
   }
+  for (auto &control : controls_) {
+    control->Stop();
+  }
 }
 
 void PipelineImpl::FeedbackLoop() const {
