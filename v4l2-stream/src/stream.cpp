@@ -20,6 +20,7 @@
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_stream.h"
 namespace {
+
 struct Handler : public hs::Handler {
   coro::async_generator<hs::Response> Handle(const hs::Request req) override {
     v4s::MJpegEncoder encoder;
@@ -41,6 +42,7 @@ struct Handler : public hs::Handler {
         }
       }
       spdlog::info("finished streaming");
+      stop_source.request_stop();
     } catch (std::exception &e) {
       spdlog::error("got an exception {}", e.what());
     }
@@ -49,12 +51,13 @@ struct Handler : public hs::Handler {
   Handler(v4s::Pipeline pipeline) : pipeline(pipeline) {}
   ~Handler() {
     stop_source.request_stop();
-    pipelineThread.join();
+    if (pipelineThread.joinable()) pipelineThread.join();
   }
   v4s::Pipeline pipeline;
   std::jthread pipelineThread;
   std::stop_source stop_source;
 };
+
 struct Route : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::GET; }
   std::string GetPath() const override { return "/stream"; }

@@ -18,8 +18,9 @@ class PipelineControl {
   void ProcessStats();
   int GetFd() const;
   void Start();
-  typedef std::shared_ptr<PipelineControl> Ptr;
+  void Stop();
   Device::Ptr GetSource() const;
+  typedef std::shared_ptr<PipelineControl> Ptr;
 
  private:
   MMapStream::Ptr stats_source_;
