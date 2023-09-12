@@ -9,7 +9,7 @@ using namespace nlohmann::literals;
 namespace v4s {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BridgeConfig, source, sink);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SourceConfig, source);
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ControlConfig, stats_device, decoder_type,
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ControlConfig, stats_device, algorithms,
                                    ctrl_device);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PipelineConfig, bridges, source, controls)
 

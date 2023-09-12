@@ -15,8 +15,10 @@
   "controls": [
     {
       "stats_device": "/dev/video16",
-      "decoder_type": "bcm2835_isp_stats",
-      "ctrl_device": "/dev/video13"
+      "ctrl_device": "/dev/video13",
+      "algorithms": [
+        "rpi-agc"
+      ]
     }
   ]
 }
