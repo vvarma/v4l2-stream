@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "decoders.h"
+#include "algorithm.h"
 #include "feedback.h"
 #include "pipeline/config.h"
 #include "pipeline_impl.h"
@@ -67,12 +67,16 @@ Pipeline PipelineLoader::Load() const {
     }
     it = devices_.find(cc.ctrl_device);
     Device::Ptr ctrl_device = (*it).second;
-    auto decoder = Decoders::Get(cc.decoder_type);
-    if (!decoder) {
-      throw Exception("Unknown decoder type");
+    std::vector<Algorithm::Ptr> algorithms;
+    for (const auto &name : cc.algorithms) {
+      auto algorithm = GetAlgorithm(name);
+      if (!algorithm) {
+        throw Exception("Unknown algorithm");
+      }
+      algorithms.emplace_back(algorithm);
     }
     controls.emplace_back(std::make_shared<PipelineControl>(
-        std::make_shared<MMapStream>(meta_cap_device.value()), decoder.value(),
+        std::make_shared<MMapStream>(meta_cap_device.value()), algorithms,
         ctrl_device));
   }
   v4s::Pipeline pipeline(std::make_shared<internal::PipelineImpl>(

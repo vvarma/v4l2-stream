@@ -2,13 +2,15 @@
 
 #include <spdlog/spdlog.h>
 
-#include "decoders.h"
-#include "decoders/bcm2835-isp.h"
+#include <cstdint>
+
+#include "bcm2835-isp.h"
 
 namespace v4s {
-void BCM2835IspStatsDecoder::Decode(Frame::Ptr frame, Stats &stats) {
+bcm2835_isp_stats BCM2835IspStatsDecode(Frame::Ptr frame) {
   auto stats_ptr = static_cast<const bcm2835_isp_stats *>(frame->Data(0));
-  spdlog::info("Stats: {0}", stats_ptr->version);
+  bcm2835_isp_stats stats = *stats_ptr;
+  return stats;
 }
 
 }  // namespace v4s

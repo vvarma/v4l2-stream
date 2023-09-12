@@ -12,7 +12,8 @@ struct SourceConfig {
 };
 
 struct ControlConfig {
-  std::string stats_device, decoder_type, ctrl_device;
+  std::string stats_device, ctrl_device;
+  std::vector<std::string> algorithms;
 };
 
 struct PipelineConfig {
