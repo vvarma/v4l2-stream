@@ -14,10 +14,20 @@
   },
   "controls": [
     {
-      "stats_device": "/dev/video16",
-      "ctrl_device": "/dev/video13",
+      "stats_device": {
+        "source": "/dev/video16",
+        "codec": "BSTA",
+        "decoder": "bcm2835-isp"
+      },
       "algorithms": [
-        "rpi-agc"
+        {
+          "name": "rpi-agc",
+          "device": "/dev/video0"
+        },
+        {
+          "name": "rpi-denoise",
+          "device": "/dev/video13"
+        }
       ]
     }
   ]

@@ -24,8 +24,8 @@
 #include "v4l/v4l_meta_cap.h"
 #include "v4l/v4l_output.h"
 
-std::vector<v4s::Control::Ptr> QueryControls(int fd) {
-  std::vector<v4s::Control::Ptr> controls;
+std::vector<v4s::IntControl> QueryControls(int fd) {
+  std::vector<v4s::IntControl> controls;
 
   v4l2_query_ext_ctrl queryctrl;
   uint32_t start_id = V4L2_CID_BASE;
@@ -41,9 +41,9 @@ std::vector<v4s::Control::Ptr> QueryControls(int fd) {
     }
     switch (queryctrl.type) {
       case V4L2_CTRL_TYPE_INTEGER:
-        controls.push_back(std::make_shared<v4s::IntControl>(
-            queryctrl.id, queryctrl.name, queryctrl.minimum, queryctrl.maximum,
-            queryctrl.default_value, 0, queryctrl.step));
+        controls.emplace_back(queryctrl.id, queryctrl.name, queryctrl.minimum,
+                              queryctrl.maximum, queryctrl.default_value, 0,
+                              queryctrl.step);
         break;
       default:
         spdlog::info("Unk Control: {} type: {}", queryctrl.name,
@@ -168,17 +168,28 @@ std::optional<MetaCaptureDevice> Device::TryMetaCapture() {
   return MetaCaptureDevice(shared_from_this());
 }
 
-std::vector<Control::Ptr> Device::GetControls() {
+std::vector<IntControl> Device::GetControls() {
   for (auto &control : controls_) {
-    control->UpdateCurrent(fd_);
+    control.UpdateCurrent(fd_);
   }
   return controls_;
 }
 
+std::optional<IntControl> Device::GetControl(uint32_t id) {
+  for (auto &control : controls_) {
+    if (control.id == id) {
+      control.UpdateCurrent(fd_);
+      return control;
+    }
+  }
+
+  return std::nullopt;
+}
+
 void Device::SetControl(uint32_t id, int64_t val) {
   for (auto &control : controls_) {
-    if (control->id == id) {
-      control->SetControl(fd_, val);
+    if (control.id == id) {
+      control.SetControl(fd_, val);
       return;
     }
   }

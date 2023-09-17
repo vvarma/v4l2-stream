@@ -38,7 +38,7 @@ class Device : public std::enable_shared_from_this<Device> {
   int fd_;
   std::string devnode_;
   Capabilities capabilities_;
-  std::vector<Control::Ptr> controls_;
+  std::vector<IntControl> controls_;
 
  public:
   typedef std::shared_ptr<Device> Ptr;
@@ -64,7 +64,8 @@ class Device : public std::enable_shared_from_this<Device> {
   std::optional<OutputDevice> TryOutput();
   std::optional<MetaCaptureDevice> TryMetaCapture();
 
-  std::vector<Control::Ptr> GetControls();
+  std::vector<IntControl> GetControls();
+  std::optional<IntControl> GetControl(uint32_t id);
   void SetControl(uint32_t id, int64_t val);
 };
 

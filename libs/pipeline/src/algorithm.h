@@ -1,21 +1,29 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
+#include "metadata.h"
+#include "v4l/v4l_controls.h"
+#include "v4l/v4l_device.h"
 #include "v4l/v4l_frame.h"
 namespace v4s {
 
 class Algorithm {
  public:
   typedef std::shared_ptr<Algorithm> Ptr;
-  virtual void ProcessStats(const Frame::Ptr frame) = 0;
+
+  virtual void Prepare(Metadata &metadata);
+  virtual void ProcessStats(Metadata &metadata);
   virtual ~Algorithm() = default;
+
 };
 
 struct RegisterAlgorithm {
-  RegisterAlgorithm(std::string name, std::function<Algorithm::Ptr()> factory);
+  typedef std::function<Algorithm::Ptr(Device::Ptr)> RegisterFn;
+  RegisterAlgorithm(std::string name, RegisterFn factory);
 };
 
-Algorithm::Ptr GetAlgorithm(std::string name);
+Algorithm::Ptr GetAlgorithm(std::string name, Device::Ptr dev);
 
 }  // namespace v4s
