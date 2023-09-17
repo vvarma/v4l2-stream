@@ -11,9 +11,16 @@ struct SourceConfig {
   std::string source;
 };
 
+struct AlgoConfig {
+  std::string name;
+  std::string device;
+};
+struct StatsSourceConfig {
+  std::string source, codec, decoder;
+};
 struct ControlConfig {
-  std::string stats_device, ctrl_device;
-  std::vector<std::string> algorithms;
+  StatsSourceConfig stats_device;
+  std::vector<AlgoConfig> algorithms;
 };
 
 struct PipelineConfig {

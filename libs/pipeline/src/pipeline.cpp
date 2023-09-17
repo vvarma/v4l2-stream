@@ -111,11 +111,11 @@ void PipelineImpl::Start(std::stop_token stop_token) {
       spdlog::info("failed to subscribe to source change events for {}", fd);
     }
   }
-  for (auto &bridge : bridges_) {
-    bridge->Start();
-  }
   for (auto &control : controls_) {
     control->Start();
+  }
+  for (auto &bridge : bridges_) {
+    bridge->Start();
   }
   while (!stop_token.stop_requested()) {
     int ready = poll(fds.data(), fds.size(), 100);
@@ -202,11 +202,6 @@ void PipelineImpl::Prepare(std::string sink_codec) {
       spdlog::error("Failed to set format: exp {} obs {}", fmt, updated_fmt);
       throw Exception("Failed to set format");
     }
-  }
-  for (auto &ctrl : controls_) {
-    ctrl->GetSource()->SetFormat(BUF_META_CAPTURE, Format{
-                                                       .codec = "BSTA",
-                                                   });
   }
   spdlog::info("Finished configuring devices");
 }

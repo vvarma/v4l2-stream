@@ -5,17 +5,28 @@
 #include <map>
 
 #include "algorithm.h"
+#include "metadata.h"
 namespace v4s {
-static std::map<std::string, Algorithm::Ptr>& algorithms() {
-  static std::map<std::string, Algorithm::Ptr> algorithms;
+
+void Algorithm::Prepare(Metadata&){};
+void Algorithm::ProcessStats(Metadata&){};
+
+static std::map<std::string, RegisterAlgorithm::RegisterFn>& algorithms() {
+  static std::map<std::string, RegisterAlgorithm::RegisterFn> algorithms;
   return algorithms;
 }
 RegisterAlgorithm::RegisterAlgorithm(std::string name,
-                                     std::function<Algorithm::Ptr()> factory) {
+                                     RegisterAlgorithm::RegisterFn factory) {
   spdlog::info("Registering algorithm {}", name);
-  algorithms().emplace(name, factory());
+  algorithms().emplace(name, factory);
 }
 
-Algorithm::Ptr GetAlgorithm(std::string name) { return algorithms()[name]; }
+Algorithm::Ptr GetAlgorithm(std::string name, Device::Ptr dev) {
+  if (algorithms().find(name) == algorithms().end()) {
+    spdlog::error("Algorithm {} not found", name);
+    return nullptr;
+  }
+  return algorithms()[name](dev);
+}
 
 }  // namespace v4s

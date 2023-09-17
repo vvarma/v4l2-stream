@@ -1,35 +1,36 @@
 #pragma once
 
+#include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #include "algorithm.h"
 #include "coro/async_generator.hpp"
 #include "coro/task.hpp"
+#include "decoder.h"
 #include "v4l/v4l_device.h"
 #include "v4l/v4l_stream.h"
 namespace v4s {
 
-struct Stats {
-  float r_mean, g_mean, b_mean;
-  void operator+=(const Stats& other);
+struct StatsSource {
+  MMapStream::Ptr stream;
+  DecoderFn decoder;
+  std::string codec;
 };
 
 class PipelineControl {
  public:
-  PipelineControl(MMapStream::Ptr stats_source,
-                  std::vector<Algorithm::Ptr> algorithms, Device::Ptr device);
+  PipelineControl(StatsSource stats_source,
+                  std::vector<Algorithm::Ptr> algorithms);
   void ProcessStats();
   int GetFd() const;
   void Start();
   void Stop();
-  Device::Ptr GetSource() const;
   typedef std::shared_ptr<PipelineControl> Ptr;
 
  private:
-  MMapStream::Ptr stats_source_;
+  StatsSource stats_source_;
   std::vector<Algorithm::Ptr> algorithms_;
-  Stats stats_;
-  Device::Ptr device_;
 };
 
 }  // namespace v4s

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "algorithm.h"
+#include "decoder.h"
 #include "feedback.h"
 #include "pipeline/config.h"
 #include "pipeline_impl.h"
@@ -27,10 +28,9 @@ std::unordered_map<std::string, Device::Ptr> LoadDevices(
   if (devices.find(config.source.source) == devices.end())
     devices[config.source.source] = Device::from_devnode(config.source.source);
   for (auto cc : config.controls) {
-    if (devices.find(cc.ctrl_device) == devices.end())
-      devices[cc.ctrl_device] = Device::from_devnode(cc.ctrl_device);
-    if (devices.find(cc.stats_device) == devices.end())
-      devices[cc.stats_device] = Device::from_devnode(cc.stats_device);
+    if (devices.find(cc.stats_device.source) == devices.end())
+      devices[cc.stats_device.source] =
+          Device::from_devnode(cc.stats_device.source);
   }
   return devices;
 }
@@ -59,25 +59,36 @@ Pipeline PipelineLoader::Load() const {
   }
   std::vector<PipelineControl::Ptr> controls;
   for (const auto &cc : config_.controls) {
-    auto it = devices_.find(cc.stats_device);
+    auto it = devices_.find(cc.stats_device.source);
     std::optional<MetaCaptureDevice> meta_cap_device =
         *it->second->TryMetaCapture();
     if (!meta_cap_device) {
       throw Exception("Meta source needs a capture device");
     }
-    it = devices_.find(cc.ctrl_device);
-    Device::Ptr ctrl_device = (*it).second;
     std::vector<Algorithm::Ptr> algorithms;
-    for (const auto &name : cc.algorithms) {
-      auto algorithm = GetAlgorithm(name);
+    for (const auto &[name, ctrl_device_name] : cc.algorithms) {
+      auto cit = devices_.find(ctrl_device_name);
+      if (cit == devices_.end()) {
+        throw Exception("Algorithm needs a control device");
+      }
+      auto algorithm = GetAlgorithm(name, cit->second);
       if (!algorithm) {
         throw Exception("Unknown algorithm");
       }
       algorithms.emplace_back(algorithm);
     }
+    auto decoder = GetDecoder(cc.stats_device.decoder);
+    if (!decoder) {
+      throw Exception("Unknown decoder");
+    }
+
     controls.emplace_back(std::make_shared<PipelineControl>(
-        std::make_shared<MMapStream>(meta_cap_device.value()), algorithms,
-        ctrl_device));
+        StatsSource{
+            .stream = std::make_shared<MMapStream>(meta_cap_device.value()),
+            .decoder = decoder.value(),
+            .codec = cc.stats_device.codec,
+        },
+        algorithms));
   }
   v4s::Pipeline pipeline(std::make_shared<internal::PipelineImpl>(
       std::make_shared<MMapStream>(cap_device.value()), bridges, controls));

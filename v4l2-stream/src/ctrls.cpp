@@ -41,11 +41,11 @@ struct PipelineDescRoute : public hs::Route {
 };
 
 struct GetResp {
-  std::vector<v4s::Control::Ptr> controls;
+  std::vector<v4s::IntControl> controls;
   json ToJson() const {
     json j = json::array();
     for (auto &ctrl : controls) {
-      j.push_back(ctrl->ToJson());
+      j.push_back(ctrl.ToJson());
     }
     return j;
   }
