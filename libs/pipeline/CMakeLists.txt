@@ -1,6 +1,11 @@
 project(pipeline)
 
-add_library(rpi-algos OBJECT src/rpi-agc.cpp src/rpi-denoise.cpp)
+add_library(rpi-algos OBJECT 
+  src/rpi-agc.cpp 
+  src/rpi-awb.cpp 
+  src/rpi-denoise.cpp 
+  src/rpi-sharpen.cpp
+  )
 target_link_libraries(rpi-algos PRIVATE v4l spdlog::spdlog)
 
 add_library(rpi-decoders OBJECT src/decoders/bcm2835-isp-decoder.cpp)

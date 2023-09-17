@@ -3,6 +3,9 @@
 #include <spdlog/spdlog.h>
 #include <sys/ioctl.h>
 
+#include <cstdint>
+#include <cstring>
+
 #include "algorithm.h"
 #include "metadata.h"
 #define V4L2_CID_USER_BCM2835_ISP_BASE (V4L2_CID_USER_BASE + 0x10e0)
@@ -20,6 +23,12 @@ class RpiDenoise : public v4s::Algorithm {
         .enabled = 1,
         .mode = CDN_MODE_FAST,
     };
+    bcm2835_isp_denoise spatial_denoise{
+        .enabled = 1,
+        .constant = 0,
+        .slope = {.num = 367, .den = 100},
+        .strength = {.num = 75, .den = 100},
+    };
     bcm2835_isp_geq geq{
         .enabled = 1,
         .offset = 204,
@@ -32,21 +41,23 @@ class RpiDenoise : public v4s::Algorithm {
     std::vector<v4l2_ext_control> ctrls = {
         v4l2_ext_control{
             .id = V4L2_CID_USER_BCM2835_ISP_CDN,
-            .p_u8 = reinterpret_cast<uint8_t*>(&denoise),
+            .size = sizeof(denoise),
+            .ptr = &denoise,
         },
         v4l2_ext_control{
             .id = V4L2_CID_USER_BCM2835_ISP_GEQ,
-            .p_u8 = reinterpret_cast<uint8_t*>(&geq),
+            .size = sizeof(geq),
+            .ptr = &geq,
         },
     };
     v4l2_ext_controls controls{
         .which = V4L2_CTRL_WHICH_CUR_VAL,
-        .count = 1,
+        .count = static_cast<uint32_t>(ctrls.size()),
         .controls = ctrls.data(),
     };
     int ret = ioctl(dev_->fd(), VIDIOC_S_EXT_CTRLS, &controls);
     if (ret < 0) {
-      spdlog::error("Failed to set denoise");
+      spdlog::error("Failed to set denoise: {}", strerror(errno));
     }
   }
 };

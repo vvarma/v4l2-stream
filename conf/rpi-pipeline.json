@@ -25,6 +25,14 @@
           "device": "/dev/video0"
         },
         {
+          "name": "rpi-awb",
+          "device": "/dev/video13"
+        },
+        {
+          "name": "rpi-sharpen",
+          "device": "/dev/video13"
+        },
+        {
           "name": "rpi-denoise",
           "device": "/dev/video13"
         }
