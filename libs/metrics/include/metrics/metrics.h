@@ -9,6 +9,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <variant>
+#include <mutex>
 #include <vector>
 namespace v4s {
 struct Stat {

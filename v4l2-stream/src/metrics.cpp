@@ -3,6 +3,7 @@
 #include <chrono>
 #include <coro/single_consumer_event.hpp>
 #include <future>
+#include <mutex>
 #include <thread>
 
 #include "http-server/enum.h"

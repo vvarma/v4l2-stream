@@ -18,11 +18,11 @@ void BCM2835IspStatsDecode(v4s::Frame::Ptr frame, v4s::Metadata &metadata) {
     g_awb_sum += stats_ptr->awb_stats[i].g_sum;
     b_awb_sum += stats_ptr->awb_stats[i].b_sum;
     num_pixels += stats_ptr->awb_stats[i].counted;
-    metadata.Set("r_sum", r_awb_sum);
-    metadata.Set("g_sum", g_awb_sum);
-    metadata.Set("b_sum", b_awb_sum);
-    metadata.Set("num_pixels", num_pixels);
   }
+  metadata.Set("r_sum", r_awb_sum);
+  metadata.Set("g_sum", g_awb_sum);
+  metadata.Set("b_sum", b_awb_sum);
+  metadata.Set("num_pixels", num_pixels);
 }
 
 static v4s::RegisterDecoder reg("bcm2835-isp", BCM2835IspStatsDecode);
