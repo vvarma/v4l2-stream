@@ -3,6 +3,7 @@ INSTALL_DIR ?= local_build
 BUILD_PROFILE ?= default
 HOST_PROFILE ?= default
 BUILD_TYPE ?= Release
+ARCH ?= amd64
 
 DOCKER_OPTS := --secret=id=netrc,src=${HOME}/.netrc
 DOCKER_OUT := ./bin
@@ -22,6 +23,10 @@ build:
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$(BUILD_DIR)/conan_toolchain.cmake -DENABLE_TESTS=OFF
 	cmake --build $(BUILD_DIR) ${CMAKE_BUILD_OPTS} 
 
+.PHONY: build-dpkg
+build-dpkg: build
+	cd $(BUILD_DIR) && cpack -G DEB
+
 .PHONY: install
 install:
 	cmake --install ${BUILD_DIR} --prefix ${INSTALL_DIR}
@@ -35,11 +40,9 @@ docker-build:
 	docker buildx build -o $(DOCKER_OUT) $(DOCKER_OPTS) .
 
 .PHONY: docker-arm64
-docker-arm64: DOCKER_OPTS += --build-arg CC=aarch64-linux-gnu-gcc --build-arg CXX=aarch64-linux-gnu-g++ --build-arg HOST_PROFILE=armv8
-docker-arm64: DOCKER_OUT = ./bin/armv8
+docker-arm64: DOCKER_OPTS += --build-arg CC=aarch64-linux-gnu-gcc --build-arg CXX=aarch64-linux-gnu-g++ --build-arg HOST_PROFILE=armv8 --build-arg ARCH=aarch64
 docker-arm64: docker-build
 
 .PHONY: docker-arm
-docker-arm: DOCKER_OPTS += --build-arg CC=arm-linux-gnueabihf-gcc --build-arg CXX=arm-linux-gnueabihf-g++ --build-arg HOST_PROFILE=arm
-docker-arm: DOCKER_OUT = ./bin/arm
+docker-arm: DOCKER_OPTS += --build-arg CC=arm-linux-gnueabihf-gcc --build-arg CXX=arm-linux-gnueabihf-g++ --build-arg HOST_PROFILE=arm --build-arg ARCH=arm
 docker-arm: docker-build

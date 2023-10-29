@@ -1,0 +1,9 @@
+[Unit]
+Description=V4L2 Stream server
+
+[Service]
+ExecStart=/usr/bin/v4l2-stream -w /usr/share/v4l2-stream/web -l info /usr/share/v4l2-stream/conf/rpi-pipeline.json
+
+[Install]
+WantedBy=multi-user.target
+

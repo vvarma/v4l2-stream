@@ -48,18 +48,20 @@ COPY . /code
 WORKDIR /code
 ARG HOST_PROFILE=default
 ARG BUILD_TYPE=Release
-ARG INSTALL_DIR=bin
+ARG BUILD_DIR=local_build
 ARG CC=gcc
 ARG CXX=g++
+ARG ARCH=amd64
 
 ENV HOST_PROFILE=$HOST_PROFILE
 ENV BUILD_TYPE=$BUILD_TYPE
-ENV INSTALL_DIR=$INSTALL_DIR
 ENV CC=$CC
 ENV CXX=$CXX
+ENV BUILD_DIR=$BUILD_DIR
+ENV ARCH=$ARCH
 
 RUN --mount=type=cache,target=/root/.conan/data make
 
 FROM scratch
 
-COPY --from=build /code/bin/* /
+COPY --from=build /code/local_build/*.deb /
