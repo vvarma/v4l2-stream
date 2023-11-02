@@ -40,19 +40,16 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(options.log_level.value());
 
     asio::io_context io_context(1);
-
-    auto pipeline = v4s::PipelineLoader(
-                        v4s::PipelineConfig::FromFile(options.pipeline_config))
-                        .Load();
+    v4s::PipelineLoader loader(v4s::PipelineConfig::FromFile(options.pipeline_config));
     auto server = std::make_shared<hs::HttpServer>(
         hs::Config("v4l2-stream", "0.0.0.0", 4891));
 
-    server->AddRoute(StreamRoutes(pipeline));
-    server->AddRoute(SnapshotRoutes(pipeline));
-    for (auto &route : SelectionRoutes(pipeline)) {
+    server->AddRoute(StreamRoutes(loader));
+    server->AddRoute(SnapshotRoutes(loader));
+    for (auto &route : SelectionRoutes(loader)) {
       server->AddRoute(route);
     }
-    for (auto &route : CtrlRoutes(pipeline)) {
+    for (auto &route : CtrlRoutes(loader)) {
       server->AddRoute(route);
     }
     server->AddRoute(MetricsRoute());

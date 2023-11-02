@@ -9,6 +9,7 @@
 #include "http-server/enum.h"
 #include "http-server/http-server.h"
 #include "http-server/route.h"
+#include "pipeline/loader.h"
 #include "pipeline/pipeline.h"
 #include "v4l/v4l_capture.h"
 #include "v4l/v4l_controls.h"
@@ -34,10 +35,10 @@ struct PipelineDescRoute : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::GET; }
   std::string GetPath() const override { return "/pipeline"; }
   hs::Handler::Ptr GetHandler() const override {
-    return std::make_shared<PipelineDescHandler>(pipeline_);
+    return std::make_shared<PipelineDescHandler>(loader.Load());
   }
-  PipelineDescRoute(v4s::Pipeline pipeline) : pipeline_(pipeline) {}
-  v4s::Pipeline pipeline_;
+  PipelineDescRoute(v4s::PipelineLoader loader) : loader(loader) {}
+  v4s::PipelineLoader loader;
 };
 
 struct GetResp {
@@ -81,10 +82,10 @@ struct GetCtrlsRoute : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::GET; }
   std::string GetPath() const override { return "/ctrls"; }
   hs::Handler::Ptr GetHandler() const override {
-    return std::make_shared<GetCtrlsHandler>(pipeline_);
+    return std::make_shared<GetCtrlsHandler>(loader.Load());
   }
-  GetCtrlsRoute(const v4s::Pipeline &pipeline) : pipeline_(pipeline) {}
-  v4s::Pipeline pipeline_;
+  GetCtrlsRoute(const v4s::PipelineLoader &loader) : loader(loader) {}
+  v4s::PipelineLoader loader;
 };
 
 struct SetCtrlReq {
@@ -131,14 +132,14 @@ struct SetCtrlsRoute : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::POST; }
   std::string GetPath() const override { return "/ctrls"; }
   hs::Handler::Ptr GetHandler() const override {
-    return std::make_shared<SetCtrlsHandler>(pipeline_);
+    return std::make_shared<SetCtrlsHandler>(loader.Load());
   }
-  SetCtrlsRoute(const v4s::Pipeline &pipeline) : pipeline_(pipeline) {}
-  v4s::Pipeline pipeline_;
+  SetCtrlsRoute(const v4s::PipelineLoader &loader) : loader(loader) {}
+  v4s::PipelineLoader loader;
 };
 
-std::vector<hs::Route::Ptr> CtrlRoutes(v4s::Pipeline pipeline) {
-  return {std::make_shared<GetCtrlsRoute>(pipeline),
-          std::make_shared<SetCtrlsRoute>(pipeline),
-          std::make_shared<PipelineDescRoute>(pipeline)};
+std::vector<hs::Route::Ptr> CtrlRoutes(v4s::PipelineLoader loader) {
+  return {std::make_shared<GetCtrlsRoute>(loader),
+          std::make_shared<SetCtrlsRoute>(loader),
+          std::make_shared<PipelineDescRoute>(loader)};
 }

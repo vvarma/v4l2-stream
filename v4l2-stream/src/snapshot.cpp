@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "encoder/mjpeg_encoder.h"
+#include "pipeline/loader.h"
 
 namespace {
 
@@ -41,15 +42,15 @@ struct Route : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::GET; }
   std::string GetPath() const override { return "/snapshot"; }
   hs::Handler::Ptr GetHandler() const override {
-    return std::make_shared<Handler>(pipeline);
+    return std::make_shared<Handler>(loader.Load());
   }
-  Route(v4s::Pipeline pipeline) : pipeline(pipeline) {}
+  Route(v4s::PipelineLoader loader) : loader(loader) {}
 
-  v4s::Pipeline pipeline;
+  v4s::PipelineLoader loader;
 };
 
 }  // namespace
 
-hs::Route::Ptr SnapshotRoutes(v4s::Pipeline pipeline) {
-  return std::make_shared<::Route>(pipeline);
+hs::Route::Ptr SnapshotRoutes(v4s::PipelineLoader loader) {
+  return std::make_shared<::Route>(loader);
 }

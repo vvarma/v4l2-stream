@@ -14,6 +14,7 @@
 #include "encoder/mjpeg_encoder.h"
 #include "http-server/enum.h"
 #include "http-server/route.h"
+#include "pipeline/loader.h"
 #include "pipeline/pipeline.h"
 #include "v4l/v4l_bridge.h"
 #include "v4l/v4l_capture.h"
@@ -62,14 +63,14 @@ struct Route : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::GET; }
   std::string GetPath() const override { return "/stream"; }
   hs::Handler::Ptr GetHandler() const override {
-    return std::make_shared<Handler>(pipeline);
+    return std::make_shared<Handler>(loader.Load());
   }
-  Route(v4s::Pipeline pipeline) : pipeline(pipeline) {}
+  Route(v4s::PipelineLoader loader) : loader(loader) {}
 
-  v4s::Pipeline pipeline;
+  v4s::PipelineLoader loader;
 };
 }  // namespace
 
-hs::Route::Ptr StreamRoutes(v4s::Pipeline pipeline) {
-  return std::make_shared<::Route>(pipeline);
+hs::Route::Ptr StreamRoutes(v4s::PipelineLoader loader) {
+  return std::make_shared<::Route>(loader);
 }

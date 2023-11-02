@@ -4,6 +4,6 @@
 
 #include <vector>
 
-#include "pipeline/pipeline.h"
-std::vector<hs::Route::Ptr> CtrlRoutes(v4s::Pipeline pipeline);
+#include "pipeline/loader.h"
+std::vector<hs::Route::Ptr> CtrlRoutes(v4s::PipelineLoader loader);
 #endif  // !#ifndef V4L2_STREAM_CTRLS_H

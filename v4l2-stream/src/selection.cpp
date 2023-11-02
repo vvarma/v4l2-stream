@@ -6,6 +6,7 @@
 
 #include "http-server/enum.h"
 #include "http-server/route.h"
+#include "pipeline/loader.h"
 #include "pipeline/pipeline.h"
 #include "query-params.h"
 #include "v4l/v4l_device.h"
@@ -56,10 +57,10 @@ struct SetSelectionRoute : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::POST; }
   std::string GetPath() const override { return "/selection"; }
   hs::Handler::Ptr GetHandler() const override {
-    return std::make_shared<SetSelectionHandler>(pipeline);
+    return std::make_shared<SetSelectionHandler>(loader.Load());
   }
-  SetSelectionRoute(v4s::Pipeline pipeline) : pipeline(pipeline) {}
-  v4s::Pipeline pipeline;
+  SetSelectionRoute(v4s::PipelineLoader loader) : loader(loader) {}
+  v4s::PipelineLoader loader;
 };
 struct GetSelectionHandler : public hs::Handler {
   coro::async_generator<hs::Response> Handle(const hs::Request req) override {
@@ -84,17 +85,17 @@ struct GetSelectionRoute : public hs::Route {
   hs::Method GetMethod() const override { return hs::Method::GET; }
   std::string GetPath() const override { return "/selection"; }
   hs::Handler::Ptr GetHandler() const override {
-    return std::make_shared<GetSelectionHandler>(pipeline);
+    return std::make_shared<GetSelectionHandler>(loader.Load());
   }
-  GetSelectionRoute(v4s::Pipeline pipeline) : pipeline(pipeline) {}
-  v4s::Pipeline pipeline;
+  GetSelectionRoute(v4s::PipelineLoader loader) : loader(loader) {}
+  v4s::PipelineLoader loader;
 };
 
 };  // namespace
 
-std::vector<hs::Route::Ptr> SelectionRoutes(v4s::Pipeline pipeline) {
+std::vector<hs::Route::Ptr> SelectionRoutes(v4s::PipelineLoader loader) {
   return {
-      std::make_shared<::GetSelectionRoute>(pipeline),
-      std::make_shared<::SetSelectionRoute>(pipeline),
+      std::make_shared<::GetSelectionRoute>(loader),
+      std::make_shared<::SetSelectionRoute>(loader),
   };
 }

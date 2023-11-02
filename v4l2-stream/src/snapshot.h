@@ -1,6 +1,6 @@
 #pragma once
 #include <http-server/http-server.h>
 
-#include "pipeline/pipeline.h"
+#include "pipeline/loader.h"
 
-hs::Route::Ptr SnapshotRoutes(v4s::Pipeline pipeline);
+hs::Route::Ptr SnapshotRoutes(v4s::PipelineLoader loader);

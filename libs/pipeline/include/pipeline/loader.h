@@ -16,6 +16,5 @@ class PipelineLoader {
 
  private:
   PipelineConfig config_;
-  std::unordered_map<std::string, Device::Ptr> devices_;
 };
 }  // namespace v4s

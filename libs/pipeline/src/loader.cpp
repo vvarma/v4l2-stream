@@ -1,5 +1,7 @@
 #include "pipeline/loader.h"
 
+#include <spdlog/spdlog.h>
+
 #include <memory>
 #include <string_view>
 #include <unordered_map>
@@ -34,18 +36,23 @@ std::unordered_map<std::string, Device::Ptr> LoadDevices(
   }
   return devices;
 }
-PipelineLoader::PipelineLoader(PipelineConfig config)
-    : config_(config), devices_(LoadDevices(config_)) {}
 
-Pipeline PipelineLoader::Load() const {
+std::shared_ptr<internal::PipelineImpl> LoadPipeline(
+    const PipelineConfig &config) {
+  static std::weak_ptr<internal::PipelineImpl> pipeline;
+  if (std::shared_ptr<internal::PipelineImpl> impl = pipeline.lock()) {
+    return impl;
+  }
+  spdlog::info("Creating pipeline from config");
+  auto devices = LoadDevices(config);
   std::vector<Bridge::Ptr> bridges;
-  if (devices_.empty()) {
+  if (devices.empty()) {
     throw Exception("No devices to load");
   }
-  for (const auto &bridge_config : config_.bridges) {
-    auto it = devices_.find(bridge_config.source);
+  for (const auto &bridge_config : config.bridges) {
+    auto it = devices.find(bridge_config.source);
     std::optional<CaptureDevice> capture_device = *it->second->TryCapture();
-    it = devices_.find(bridge_config.sink);
+    it = devices.find(bridge_config.sink);
     std::optional<OutputDevice> output_device = *it->second->TryOutput();
     if (!capture_device || !output_device) {
       throw Exception("Bridge needs a capture device and an output device");
@@ -53,13 +60,13 @@ Pipeline PipelineLoader::Load() const {
     bridges.emplace_back(std::make_shared<Bridge>(capture_device.value(),
                                                   output_device.value()));
   }
-  auto cap_device = devices_.find(config_.source.source)->second->TryCapture();
+  auto cap_device = devices.find(config.source.source)->second->TryCapture();
   if (!cap_device) {
     throw Exception("Pipeline needs a capture device");
   }
   std::vector<PipelineControl::Ptr> controls;
-  for (const auto &cc : config_.controls) {
-    auto it = devices_.find(cc.stats_device.source);
+  for (const auto &cc : config.controls) {
+    auto it = devices.find(cc.stats_device.source);
     std::optional<MetaCaptureDevice> meta_cap_device =
         *it->second->TryMetaCapture();
     if (!meta_cap_device) {
@@ -67,8 +74,8 @@ Pipeline PipelineLoader::Load() const {
     }
     std::vector<Algorithm::Ptr> algorithms;
     for (const auto &[name, ctrl_device_name] : cc.algorithms) {
-      auto cit = devices_.find(ctrl_device_name);
-      if (cit == devices_.end()) {
+      auto cit = devices.find(ctrl_device_name);
+      if (cit == devices.end()) {
         throw Exception("Algorithm needs a control device");
       }
       auto algorithm = GetAlgorithm(name, cit->second);
@@ -90,8 +97,15 @@ Pipeline PipelineLoader::Load() const {
         },
         algorithms));
   }
-  v4s::Pipeline pipeline(std::make_shared<internal::PipelineImpl>(
-      std::make_shared<MMapStream>(cap_device.value()), bridges, controls));
-  return pipeline;
+  auto impl = std::make_shared<internal::PipelineImpl>(
+      std::make_shared<MMapStream>(cap_device.value()), bridges, controls);
+  pipeline = impl;
+  return impl;
+}
+
+PipelineLoader::PipelineLoader(PipelineConfig config) : config_(config) {}
+
+Pipeline PipelineLoader::Load() const {
+  return v4s::Pipeline(LoadPipeline(config_));
 }
 }  // namespace v4s
