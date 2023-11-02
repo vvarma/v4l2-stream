@@ -20,6 +20,7 @@ struct EncoderTraits<MJpegEncoder> {
 class MJpegEncoder : public Encoder<MJpegEncoder> {
  public:
   coro::generator<EncodedPart> EncodeFrame(Frame::Ptr frame);
+  EncodedPart EncodeFrameBody(Frame::Ptr frame);
   std::string ContentType() const;
 };
 

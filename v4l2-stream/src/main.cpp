@@ -18,6 +18,7 @@
 #include "pipeline/config.h"
 #include "pipeline/loader.h"
 #include "selection.h"
+#include "snapshot.h"
 #include "stream.h"
 #include "v4l/v4l_bridge.h"
 #include "v4l/v4l_capture.h"
@@ -47,6 +48,7 @@ int main(int argc, char *argv[]) {
         hs::Config("v4l2-stream", "0.0.0.0", 4891));
 
     server->AddRoute(StreamRoutes(pipeline));
+    server->AddRoute(SnapshotRoutes(pipeline));
     for (auto &route : SelectionRoutes(pipeline)) {
       server->AddRoute(route);
     }
