@@ -11,7 +11,7 @@ inline v4s::Device::Ptr GetDevice(const hs::Request& req,
   auto dev_node = req.QueryParam("dev_node");
   if (!dev_node) {
     throw hs::Exception(hs::StatusCode::BadRequest,
-                        "dev_node and role are required");
+                        "dev_node is required");
   }
   auto device = pipeline.GetDevice(dev_node.value());
   if (!device) {
@@ -36,7 +36,7 @@ inline v4s::BufType GetSimpleBufType(const hs::Request& req) {
   auto role = req.QueryParam("role");
   if (!role) {
     throw hs::Exception(hs::StatusCode::BadRequest,
-                        "dev_node and role are required");
+                        "role is required");
   }
   v4s::BufType buf_type;
   if (role == "source") {
