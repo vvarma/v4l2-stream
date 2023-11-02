@@ -2,5 +2,6 @@
   "bridges": [],
   "source": {
     "source": "/dev/video0"
-  }
+  },
+  "controls":[]
 }

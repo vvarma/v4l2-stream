@@ -32,6 +32,8 @@ install:
 	cmake --install ${BUILD_DIR} --prefix ${INSTALL_DIR}
 
 .PHONY: dev
+dev: BUILD_TYPE = Debug
+dev: HOST_PROFILE = debug
 dev: build install
 	$(INSTALL_DIR)/bin/v4l2-stream
 
@@ -39,10 +41,6 @@ dev: build install
 docker-build:
 	docker buildx build -o $(DOCKER_OUT) $(DOCKER_OPTS) .
 
-.PHONY: docker-arm64
-docker-arm64: DOCKER_OPTS += --build-arg CC=aarch64-linux-gnu-gcc --build-arg CXX=aarch64-linux-gnu-g++ --build-arg HOST_PROFILE=armv8 --build-arg ARCH=aarch64
-docker-arm64: docker-build
-
 .PHONY: docker-arm
-docker-arm: DOCKER_OPTS += --build-arg CC=arm-linux-gnueabihf-gcc --build-arg CXX=arm-linux-gnueabihf-g++ --build-arg HOST_PROFILE=arm --build-arg ARCH=arm
+docker-arm: DOCKER_OPTS += --build-arg CC=arm-linux-gnueabihf-gcc --build-arg CXX=arm-linux-gnueabihf-g++ --build-arg HOST_PROFILE=arm --build-arg ARCH=arm --progress=plain
 docker-arm: docker-build
