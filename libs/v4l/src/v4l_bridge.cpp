@@ -4,6 +4,7 @@
 #include <linux/videodev2.h>
 #include <spdlog/spdlog.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 #include <cerrno>
 #include <cstring>
@@ -28,6 +29,7 @@ class BridgeBuffers {
   int NumBufs() const { return dma_fds_.size(); }
   int NumPlanes() const { return num_planes_; }
   int GetFd(int idx, int plane) const { return dma_fds_[idx][plane]; }
+  ~BridgeBuffers();
 
  private:
   std::shared_ptr<Device> device_;
@@ -234,6 +236,14 @@ internal::BridgeBuffers::BridgeBuffers(Device::Ptr capture_device,
       num_bufs_(requestBuffers(device_->fd(), buf_type_, num_bufs)),
       num_planes_(getNumPlanes(device_->fd(), buf_type_)),
       dma_fds_(mapBuffers(device_, buf_type_, num_bufs_, num_planes_)) {}
+
+internal::BridgeBuffers::~BridgeBuffers() {
+  for (const auto &fds : dma_fds_) {
+    for (const auto &fd : fds) {
+      close(fd);
+    }
+  }
+}
 
 std::vector<std::vector<int>> internal::mapBuffers(Device::Ptr device,
                                                    BufType buf_type,

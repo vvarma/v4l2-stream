@@ -3,10 +3,14 @@
 #include <http-server/route.h>
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <thread>
 
 #include "encoder/mjpeg_encoder.h"
+#include "http-server/enum.h"
 #include "pipeline/loader.h"
+#include "v4l/v4l_exception.h"
+#include "v4l/v4l_frame.h"
 
 namespace {
 
@@ -14,12 +18,23 @@ struct Handler : public hs::Handler {
   coro::async_generator<hs::Response> Handle(const hs::Request req) override {
     v4s::MJpegEncoder encoder;
     pipeline.Prepare(v4s::EncoderTraits<v4s::MJpegEncoder>::Codec);
-    std::jthread pipelineThread(
-        [&](std::stop_token st) { pipeline.Start(st); });
+    std::jthread pipelineThread([&](std::stop_token st) {
+      try {
+        pipeline.Start(st);
+      } catch (const v4s::Exception &e) {
+        spdlog::error("got an exception in start pipeline: {}", e.what());
+      }
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    v4s::Frame::Ptr frame = nullptr;
     try {
+      for (int i = 0; i < 20; ++i) pipeline.Next();
+      frame = pipeline.Next();
+    } catch (std::exception &e) {
+      spdlog::error("got an exception {}", e.what());
+    }
+    if (frame) {
       co_yield hs::StatusCode::Ok;
-      for (int i = 0; i < 200; ++i) pipeline.Next();
-      auto frame = pipeline.Next();
       hs::Headers headers = {
           {"Content-Type", encoder.ContentType()},
           {"Content-Length", fmt::format("{}", frame->Size(0))},
@@ -28,8 +43,13 @@ struct Handler : public hs::Handler {
       co_yield std::make_shared<hs::WritableResponseBody<v4s::EncodedPart>>(
           encoder.EncodeFrameBody(frame));
       spdlog::info("finished streaming");
-    } catch (std::exception &e) {
-      spdlog::error("got an exception {}", e.what());
+    } else {
+      co_yield hs::StatusCode::InternalServerError;
+      hs::Headers headers = {
+          {"Content-Type", encoder.ContentType()},
+          {"Content-Length", "0"},
+      };
+      co_yield headers;
     }
   }
 

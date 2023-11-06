@@ -152,6 +152,7 @@ void PipelineImpl::Start(std::stop_token stop_token) {
   }
 
   // todo RAII
+  spdlog::info("stopping bridges and sink");
   sink_->Stop();
   for (auto &bridge : bridges_) {
     bridge->Stop();
