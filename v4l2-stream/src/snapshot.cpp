@@ -36,7 +36,7 @@ struct Handler : public hs::Handler {
     if (frame) {
       co_yield hs::StatusCode::Ok;
       hs::Headers headers = {
-          {"Content-Type", encoder.ContentType()},
+          {"Content-Type", "image/jpeg"},
           {"Content-Length", fmt::format("{}", frame->Size(0))},
       };
       co_yield headers;
@@ -46,7 +46,6 @@ struct Handler : public hs::Handler {
     } else {
       co_yield hs::StatusCode::InternalServerError;
       hs::Headers headers = {
-          {"Content-Type", encoder.ContentType()},
           {"Content-Length", "0"},
       };
       co_yield headers;
