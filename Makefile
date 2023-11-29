@@ -4,8 +4,9 @@ BUILD_PROFILE ?= default
 HOST_PROFILE ?= default
 BUILD_TYPE ?= Release
 ARCH ?= amd64
+BUILD_VERSION ?= 0.0.0
 
-DOCKER_OPTS := --secret=id=netrc,src=${HOME}/.netrc
+DOCKER_OPTS := --secret=id=netrc,src=${HOME}/.netrc --build-arg BUILD_VERSION=$(BUILD_VERSION)
 DOCKER_OUT := ./bin
 
 CMAKE_BUILD_OPTS := -j4 
@@ -20,7 +21,7 @@ clean:
 .PHONY: build
 build:
 	conan install . -if=$(BUILD_DIR) -of=$(BUILD_DIR) --build=missing --profile:build=$(BUILD_PROFILE) --profile:host=$(HOST_PROFILE)
-	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$(BUILD_DIR)/conan_toolchain.cmake -DENABLE_TESTS=OFF
+	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$(BUILD_DIR)/conan_toolchain.cmake -DENABLE_TESTS=OFF -DBUILD_VERSION=$(BUILD_VERSION)
 	cmake --build $(BUILD_DIR) ${CMAKE_BUILD_OPTS} 
 
 .PHONY: build-dpkg

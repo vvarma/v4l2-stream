@@ -4,3 +4,4 @@ local_build
 .cache
 .python-version
 CMakeUserPresets.json
+node_modules
