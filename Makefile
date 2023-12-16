@@ -3,7 +3,6 @@ INSTALL_DIR ?= local_build
 BUILD_PROFILE ?= default
 HOST_PROFILE ?= default
 BUILD_TYPE ?= Release
-ARCH ?= amd64
 BUILD_VERSION ?= 0.0.0
 
 DOCKER_OPTS := --secret=id=netrc,src=${HOME}/.netrc --build-arg BUILD_VERSION=$(BUILD_VERSION)
@@ -40,8 +39,8 @@ dev: build install
 
 .PHONY: docker-build
 docker-build:
-	docker buildx build -o $(DOCKER_OUT) $(DOCKER_OPTS) .
+	docker buildx build -o $(DOCKER_OUT) $(DOCKER_OPTS) --no-cache .
 
-.PHONY: docker-arm
-docker-arm: DOCKER_OPTS += --build-arg CC=arm-linux-gnueabihf-gcc --build-arg CXX=arm-linux-gnueabihf-g++ --build-arg HOST_PROFILE=arm --build-arg ARCH=arm --progress=plain
-docker-arm: docker-build
+.PHONY: docker-arm64
+docker-arm64: DOCKER_OPTS += --build-arg CC=aarch64-linux-gnu-gcc --build-arg CXX=aarch64-linux-gnu-g++ --build-arg HOST_PROFILE=armv8 --build-arg ARCH=arm64 --progress=plain
+docker-arm64: docker-build

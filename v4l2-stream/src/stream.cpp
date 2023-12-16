@@ -8,7 +8,6 @@
 #include <memory>
 #include <stop_token>
 #include <thread>
-#include <vector>
 
 #include "encoder/encoder.h"
 #include "encoder/mjpeg_encoder.h"
@@ -16,10 +15,6 @@
 #include "http-server/route.h"
 #include "pipeline/loader.h"
 #include "pipeline/pipeline.h"
-#include "v4l/v4l_bridge.h"
-#include "v4l/v4l_capture.h"
-#include "v4l/v4l_device.h"
-#include "v4l/v4l_stream.h"
 namespace {
 
 struct Handler : public hs::Handler {

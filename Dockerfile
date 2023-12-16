@@ -62,7 +62,7 @@ ENV BUILD_DIR=$BUILD_DIR
 ENV ARCH=$ARCH
 ENV BUILD_VERSION=$BUILD_VERSION
 
-RUN --mount=type=cache,target=/root/.conan/data make
+RUN --mount=type=cache,target=/root/.conan/data make build-dpkg
 
 FROM scratch
 
