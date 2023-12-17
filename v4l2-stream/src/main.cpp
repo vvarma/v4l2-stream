@@ -5,13 +5,10 @@
 
 #include <asio.hpp>
 #include <asio/use_awaitable.hpp>
-#include <chrono>
 #include <coro/sync_wait.hpp>
-#include <csignal>
 #include <memory>
 #include <structopt/app.hpp>
 #include <thread>
-#include <vector>
 
 #include "ctrls.h"
 #include "metrics.h"
@@ -20,10 +17,6 @@
 #include "selection.h"
 #include "snapshot.h"
 #include "stream.h"
-#include "v4l/v4l_bridge.h"
-#include "v4l/v4l_capture.h"
-#include "v4l/v4l_device.h"
-#include "v4l/v4l_stream.h"
 
 using namespace std::chrono_literals;
 

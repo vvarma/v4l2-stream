@@ -4,12 +4,10 @@
 #include <stop_token>
 #include <vector>
 
-#include "coro/task.hpp"
 #include "feedback.h"
 #include "pipeline/pipeline.h"
 #include "v4l/v4l_bridge.h"
 #include "v4l/v4l_device.h"
-#include "v4l/v4l_exception.h"
 #include "v4l/v4l_frame.h"
 #include "v4l/v4l_stream.h"
 namespace v4s::internal {
@@ -24,7 +22,6 @@ class PipelineImpl {
   v4s::Frame::Ptr Next();
   std::optional<Device::Ptr> GetDevice(std::string_view dev_node) const;
   PipelineDesc GetDesc() const;
-  void FeedbackLoop() const;
 
  private:
   MMapStream::Ptr sink_;

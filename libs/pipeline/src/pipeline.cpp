@@ -8,13 +8,13 @@
 #include <cstring>
 #include <optional>
 #include <stop_token>
-#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "pipeline_impl.h"
 #include "v4l/v4l_device.h"
+#include "v4l/v4l_exception.h"
 
 namespace v4s {
 namespace internal {
@@ -159,19 +159,6 @@ void PipelineImpl::Start(std::stop_token stop_token) {
   }
   for (auto &control : controls_) {
     control->Stop();
-  }
-}
-
-void PipelineImpl::FeedbackLoop() const {
-  std::vector<pollfd> fds;
-  typedef std::function<void()> callback;
-  std::unordered_map<int, callback> read_callbacks;
-  for (auto ctrl : controls_) {
-    pollfd pfd;
-    memset(&pfd, 0, sizeof(pfd));
-    pfd.fd = ctrl->GetFd();
-    pfd.events = POLLIN;
-    fds.push_back(pfd);
   }
 }
 
