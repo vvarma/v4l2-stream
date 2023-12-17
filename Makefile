@@ -42,5 +42,9 @@ docker-build:
 	docker buildx build -o $(DOCKER_OUT) $(DOCKER_OPTS) --no-cache .
 
 .PHONY: docker-arm64
-docker-arm64: DOCKER_OPTS += --build-arg CC=aarch64-linux-gnu-gcc --build-arg CXX=aarch64-linux-gnu-g++ --build-arg HOST_PROFILE=armv8 --build-arg ARCH=arm64 --progress=plain
+docker-arm64: DOCKER_OPTS += --build-arg CC=aarch64-linux-gnu-gcc --build-arg CXX=aarch64-linux-gnu-g++ --build-arg HOST_PROFILE=armv8 --build-arg=ARCH=armv8 --build-arg --progress=plain
 docker-arm64: docker-build
+
+.PHONY: docker-arm
+docker-arm: DOCKER_OPTS += --build-arg CC=arm-linux-gnueabihf-gcc --build-arg CXX=arm-linux-gnueabihf-g++ --build-arg HOST_PROFILE=arm --build-arg ARCH=armv7hf --build-arg --progress=plain
+docker-arm: docker-build
